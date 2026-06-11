@@ -1,0 +1,65 @@
+# m3mx tool — Full Analysis V2 plugin plans
+#
+# Per-OS plugin lists for the V2 planner. The order in `core` and
+# `extended` is preserved by the planner (so triage runs cheap probes
+# first). Anything not present in the runtime plugin set is dropped
+# with a skip reason; nothing is invented.
+#
+# `fallbacks` lets the planner substitute a brittle plugin (e.g.
+# windows.netstat, which fails on many Win10/11 builds) with a more
+# robust equivalent (windows.netscan) when the primary is unavailable.
+
+windows:
+  core:
+    - windows.info
+    - windows.pslist
+    - windows.psscan
+    - windows.pstree
+    - windows.cmdline
+    - windows.malfind
+    - windows.netscan
+    - windows.ldrmodules
+    - windows.svcscan
+  extended:
+    - windows.handles
+    - windows.scheduled_tasks
+    - windows.registry.userassist
+    - windows.registry.shimcachemem
+    - windows.amcache
+
+linux:
+  core:
+    - linux.pslist
+    - linux.psscan
+    - linux.pstree
+    - linux.sockstat
+    - linux.lsof
+    - linux.bash
+    - linux.proc.Maps
+    - linux.elfs
+  extended:
+    - linux.check_modules
+    - linux.check_syscall
+    - linux.check_idt
+    - linux.check_afinfo
+    - linux.keyboard_notifiers
+    - linux.tty_check
+    - linux.mountinfo
+
+mac:
+  core:
+    - mac.pslist
+    - mac.pstree
+    - mac.netstat
+    - mac.lsof
+    - mac.malfind
+  extended:
+    - mac.list_files
+    - mac.check_syscall
+    - mac.check_sysctl
+    - mac.check_trap_table
+
+# Plugin substitutions. Used only when the key plugin is unavailable.
+# Each fallback must itself be subject to availability filtering.
+fallbacks:
+  windows.netstat: windows.netscan

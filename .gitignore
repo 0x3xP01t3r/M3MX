@@ -1,0 +1,59 @@
+# Secrets / local config
+.env
+.env.local
+.env.*
+!.env.example
+
+# Runtime data
+uploads/*
+!uploads/.gitkeep
+outputs/*
+!outputs/.gitkeep
+
+# Memory images (just in case anyone drops one in-tree)
+*.raw
+*.mem
+*.dmp
+*.vmem
+*.lime
+*.img
+*.bin
+
+# Python cruft
+__pycache__/
+**/__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.egg-info/
+build/
+dist/
+
+# Virtualenvs
+.venv/
+venv/
+env/
+
+# Editor + OS junk
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+*.swp
+*~
+
+# AI assistant config
+.claude/
+.codex
+CLAUDE.md
+.aider*
+
+# Logs
+*.log
+
+# NOTE: bin/ is intentionally tracked — it ships the bundled Volatility 2
+# runtime and the launcher wrappers, which are required for the Docker
+# image build.

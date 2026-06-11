@@ -1,0 +1,104 @@
+# m3mx tool — Full Analysis V2 baseline / allowlist
+#
+# This file informs the V2 scoring engine. Items listed here are NOT
+# silently deleted from results; they only lower the score (so a
+# borderline finding lands in info/low rather than getting suppressed).
+# See app/fa2/baseline.py for the consumers of each section.
+
+private_networks:
+  - 10.0.0.0/8
+  - 172.16.0.0/12
+  - 192.168.0.0/16
+  - 127.0.0.0/8
+  - 169.254.0.0/16          # link-local
+  - "::1/128"               # IPv6 loopback
+  - "fe80::/10"             # IPv6 link-local
+
+windows:
+  system_paths:
+    - C:\Windows\System32
+    - C:\Windows\SysWOW64
+    - C:\Windows\WinSxS
+  temp_paths:
+    - C:\Windows\Temp
+    - C:\Users\*\AppData\Local\Temp
+    - C:\Users\*\AppData\Roaming\Temp
+  browsers:
+    - chrome.exe
+    - msedge.exe
+    - firefox.exe
+    - iexplore.exe
+    - opera.exe
+    - brave.exe
+  known_installers:
+    - setup.exe
+    - installer.exe
+    - update.exe
+    - msiexec.exe
+    - googleupdate.exe
+    - edgeupdate.exe
+    - onedrivesetup.exe
+    - squirrel.exe
+
+linux:
+  system_paths:
+    - /bin
+    - /sbin
+    - /usr/bin
+    - /usr/sbin
+    - /usr/local/bin
+    - /usr/local/sbin
+    - /lib
+    - /lib64
+    - /usr/lib
+  temp_paths:
+    - /tmp
+    - /var/tmp
+    - /dev/shm
+    - /run/shm
+  web_processes:
+    - apache2
+    - httpd
+    - nginx
+    - php-fpm
+    - php-fpm7.4
+    - php-fpm8.0
+    - php-fpm8.1
+    - php-fpm8.2
+    - gunicorn
+    - uwsgi
+  shells:
+    - sh
+    - bash
+    - zsh
+    - dash
+    - ksh
+    - tcsh
+
+mac:
+  system_paths:
+    - /bin
+    - /sbin
+    - /usr/bin
+    - /usr/sbin
+    - /System
+    - /Library
+  temp_paths:
+    - /tmp
+    - /private/tmp
+    - /var/tmp
+  script_interpreters:
+    - osascript
+    - sh
+    - zsh
+    - bash
+    - python
+    - python3
+    - perl
+    - ruby
+  browsers:
+    - Safari
+    - Google Chrome
+    - Firefox
+    - Brave Browser
+    - Microsoft Edge

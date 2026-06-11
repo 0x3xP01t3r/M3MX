@@ -1,0 +1,278 @@
+# m3mx tool — Full Analysis V2 Linux detection rules
+
+rules:
+
+  # -----------------------------------------------------------------------
+  - id: linux.tmp_execution
+    title: Process executing from /tmp, /var/tmp, /dev/shm or /run/shm
+    description: |
+      A process is running from a known drop-zone path. Indicator only —
+      legitimate installers occasionally execute from these paths too.
+      Correlation (Phase 6) lifts severity when paired with a network
+      leg or a suspicious parent.
+    applies_to: [linux]
+    artifact_type: process
+    match:
+      field_nonempty: [path]
+      field_regex:
+        path: '^(?:/tmp/|/var/tmp/|/dev/shm/|/run/shm/)'
+    base_score: 6              # medium ceiling — single weak signal
+    confidence: 0.6
+    category: process
+    mitre:
+      - technique: T1059.004
+        name: Unix Shell
+        tactic: Execution
+        reason: |
+          Drop-zone execution paths are the most common landing-pad for
+          shell-driven loaders. Confirm by inspecting the binary and
+          its parent.
+        confidence: 0.5
+    false_positive_notes: |
+      Package managers, automation tools, and legitimate installers can
+      execute from /tmp during normal setup. Do not escalate without a
+      suspicious parent or cmdline.
+    recommended_validation: |
+      1. Inspect the binary on-disk; check its signature / hash.
+      2. Look up the parent process.
+      3. Check for outbound network activity on the same PID.
+    enabled: true
+    modifiers:
+      - apply: allowlisted_path_or_process
+
+  # -----------------------------------------------------------------------
+  - id: linux.deleted_running_binary
+    title: Running process backed by a deleted on-disk binary
+    description: |
+      The process path includes the ``(deleted)`` suffix that Linux
+      appends to /proc/<pid>/exe when the underlying file has been
+      removed while the process kept running — a textbook anti-forensics
+      / persistence tell.
+    applies_to: [linux]
+    artifact_type: process
+    match:
+      field_regex:
+        path: '\(deleted\)\s*$'
+    base_score: 13            # high — strong standalone evidence
+    confidence: 0.85
+    category: process
+    mitre:
+      - technique: T1070.004
+        name: File Deletion
+        tactic: Defense Evasion
+        reason: |
+          A live process whose on-disk binary has been unlinked
+          mid-execution is a classic anti-forensics pattern.
+        confidence: 0.85
+    false_positive_notes: |
+      During package upgrades a binary may briefly appear "(deleted)"
+      while the new version is installed and the old service hasn't
+      restarted yet. Correlate with the package manager state.
+    recommended_validation: |
+      1. Dump the running binary from /proc/<pid>/exe and inspect it.
+      2. Check the parent process and start time.
+      3. Look at recent package-manager activity to rule out upgrades.
+    enabled: true
+
+  # -----------------------------------------------------------------------
+  - id: linux.reverse_shell_cmdline
+    title: Reverse-shell command line
+    description: |
+      The process command line carries one of the well-known reverse-shell
+      idioms: ``bash -i``, ``/dev/tcp/``, ``nc -e``, ``ncat -e``,
+      ``socat``, ``mkfifo`` with shell.
+    applies_to: [linux]
+    artifact_type: process
+    match:
+      field_regex:
+        cmdline: '(?i)\b(?:bash|sh|zsh|dash|ksh)\s+-i\b|/dev/tcp/|/dev/udp/|\bnc(?:at)?\b[^\n]*\s-e\s|\bsocat\b[^\n]*EXEC|\bmkfifo\b[^\n]*sh\b'
+    base_score: 14            # high (one step below critical without correlation)
+    confidence: 0.9
+    category: process
+    mitre:
+      - technique: T1059.004
+        name: Unix Shell
+        tactic: Execution
+        reason: |
+          The cmdline carries a Unix-shell reverse-shell construct. The
+          interpreter is being used to broker an interactive session
+          back to a remote host.
+        confidence: 0.9
+    false_positive_notes: |
+      Penetration-test scripts and security training material legitimately
+      contain these strings. Validate against the live process / user /
+      parent context.
+    recommended_validation: |
+      1. Identify the remote endpoint (IP / port from the cmdline).
+      2. Inspect bash history and recent shell sessions for the user.
+      3. Correlate with outbound TCP connections on the same PID.
+    enabled: true
+
+  # -----------------------------------------------------------------------
+  - id: linux.reverse_shell_bash_history
+    title: Reverse-shell pattern in bash history
+    description: |
+      A recovered bash-history entry contains a reverse-shell idiom.
+      Strong indicator of post-exploitation activity.
+    applies_to: [linux]
+    artifact_type: bash_history
+    match:
+      field_regex:
+        command: '(?i)\b(?:bash|sh|zsh|dash|ksh)\s+-i\b|/dev/tcp/|/dev/udp/|\bnc(?:at)?\b[^\n]*\s-e\s|\bsocat\b[^\n]*EXEC|\bmkfifo\b[^\n]*sh\b|python[^\n]*socket\.socket'
+    base_score: 12
+    confidence: 0.8
+    category: user_activity
+    mitre:
+      - technique: T1059.004
+        name: Unix Shell
+        tactic: Execution
+        reason: |
+          The bash-history entry shows the user / attacker explicitly
+          invoking a shell-based reverse-connection idiom.
+        confidence: 0.85
+    false_positive_notes: |
+      Training labs and CTF prep histories may contain identical strings.
+      The user account context is decisive.
+    recommended_validation: |
+      1. Correlate with live processes (linux.pslist) at the timestamp.
+      2. Check the account's login records (utmp/wtmp).
+      3. Look for related downloaded payloads.
+    enabled: true
+
+  # -----------------------------------------------------------------------
+  - id: linux.scripting_socket_oneliner
+    title: Python / Perl / PHP / Ruby socket one-liner
+    description: |
+      A scripting interpreter cmdline carries the classic socket /
+      ``os.dup2`` / ``IO::Socket`` one-liner used to spawn a reverse
+      shell without bash.
+    applies_to: [linux]
+    artifact_type: process
+    match:
+      field_regex:
+        cmdline: '(?i)\b(?:python|python3|perl|ruby|php)\b[^\n]*(?:socket\.socket|IO::Socket|fsockopen|TCPSocket\.new)[^\n]*(?:dup2|exec|/bin/(?:sh|bash))'
+    base_score: 13
+    confidence: 0.88
+    category: process
+    mitre:
+      - technique: T1059.006
+        name: Python
+        tactic: Execution
+        reason: |
+          Scripting-language socket one-liners are direct equivalents of
+          a Unix-shell reverse shell; the interpreter is the carrier.
+        confidence: 0.85
+    false_positive_notes: |
+      Network admin tooling occasionally uses similar patterns for
+      legitimate connectivity checks. The combination of socket + dup2
+      / exec / /bin/sh is the actual signal.
+    recommended_validation: |
+      1. Extract the remote host/port from the cmdline.
+      2. Correlate with outbound TCP from the same PID.
+      3. Inspect any launched child shells.
+    enabled: true
+
+  # -----------------------------------------------------------------------
+  - id: linux.cron_persistence_command
+    title: Cron / at command line carries a fetcher
+    description: |
+      A cron / at invocation includes a fetcher (``curl``, ``wget``,
+      ``fetch``) — common pattern for persistence that pulls a payload
+      on schedule. Indicator only without correlation.
+    applies_to: [linux]
+    artifact_type: process
+    match:
+      field_regex:
+        cmdline: '(?i)\b(?:cron|crond|atd?)\b[^\n]*(?:\bcurl\b|\bwget\b|\bfetch\b)'
+    base_score: 10
+    confidence: 0.7
+    category: persistence
+    mitre:
+      - technique: T1053.003
+        name: Cron
+        tactic: Persistence
+        reason: |
+          A cron-driven cmdline carrying a fetcher is a textbook
+          scheduled-task persistence pattern.
+        confidence: 0.75
+      - technique: T1105
+        name: Ingress Tool Transfer
+        tactic: Command and Control
+        reason: |
+          The embedded fetcher (curl/wget/fetch) is the ingress half
+          of the persistence; the payload itself lives elsewhere.
+        confidence: 0.7
+    false_positive_notes: |
+      System health-check crons sometimes legitimately curl an internal
+      monitoring URL. Verify the target URL and the user owning the
+      crontab entry.
+    recommended_validation: |
+      1. Inspect /etc/crontab, /etc/cron.d/*, and per-user crontabs.
+      2. Resolve the URL and check reputation.
+      3. Look for the downloaded payload on disk.
+    enabled: true
+
+  - id: linux.preload_hijack_indicator
+    title: LD_PRELOAD environment hijack indicator
+    description: |
+      The process command line or environment shows LD_PRELOAD pointed
+      at a non-system path — a classic userland rootkit / hooking trick.
+    applies_to: [linux]
+    artifact_type: process
+    match:
+      field_regex:
+        cmdline: '(?i)\bLD_PRELOAD\s*=\s*(?!/lib/|/usr/lib/|/lib64/|/usr/lib64/)'
+    base_score: 12
+    confidence: 0.8
+    category: persistence
+    mitre:
+      - technique: T1574.006
+        name: Dynamic Linker Hijacking
+        tactic: Persistence
+        reason: |
+          An LD_PRELOAD entry pointing outside the system library tree
+          is the canonical userland-rootkit pattern.
+        confidence: 0.85
+    false_positive_notes: |
+      Some legitimate tools (asan, jemalloc, profiling agents) ship
+      LD_PRELOAD wrappers in user-space paths. Cross-check the .so
+      file's provenance.
+    recommended_validation: |
+      1. Inspect the .so referenced by LD_PRELOAD.
+      2. Check /etc/ld.so.preload for system-wide hijack.
+      3. Compare against package-manager provenance for the .so.
+    enabled: true
+
+  - id: linux.kernel_anomaly_indicator
+    title: Kernel-level anomaly reported by check_* plugin
+    description: |
+      A ``linux.check_*`` plugin reported a syscall / IDT / module /
+      AF_INFO / keyboard-notifier entry with a non-clean status. This
+      family of checks is designed to surface rootkits and kernel hooks.
+    applies_to: [linux]
+    artifact_type: kernel_indicator
+    match:
+      field_nonempty: [status]
+      field_regex:
+        status: '(?i)\bHIDDEN\b|\bHOOKED\b|\bSUSPICIOUS\b|\bUNKNOWN\b'
+    base_score: 16            # critical — strong standalone evidence (kernel)
+    confidence: 0.85
+    category: kernel
+    mitre:
+      - technique: T1014
+        name: Rootkit
+        tactic: Defense Evasion
+        reason: |
+          Hidden or hooked kernel structures are the canonical
+          rootkit signal — by definition they hide attacker code or
+          intercept kernel paths.
+        confidence: 0.9
+    false_positive_notes: |
+      Some kernel modules (security frameworks, virtualization shims)
+      legitimately hook syscalls. The module's signature and provenance
+      are decisive.
+    recommended_validation: |
+      1. Identify the kernel module reporting the hook.
+      2. Cross-check against the distro's package database.
+      3. Dump and inspect the suspect kernel region.
+    enabled: true

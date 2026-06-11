@@ -1,0 +1,48 @@
+{
+  "ai": {
+    "provider": "ollama",
+    "model": "",
+    "api_keys": {
+      "openai": "",
+      "anthropic": "",
+      "google": "",
+      "glm": "",
+      "agentrouter": "",
+      "abuseipdb": "",
+      "virustotal": ""
+    },
+    "glm_base_url": "https://open.bigmodel.cn/api/paas/v4/",
+    "agentrouter_base_url": "https://agentrouter.org/v1",
+    "ollama_url": "http://host.docker.internal:11434",
+    "max_tokens": 2000,
+    "temperature": 0.2,
+    "allow_shell_commands": true,
+    "shell_command_timeout": 300,
+    "shell_workdir": ""
+  },
+  "volatility": {
+    "vol2_path": "/app/bin/vol2",
+    "vol3_path": "/app/bin/vol",
+    "preference": "auto",
+    "timeout_seconds": 600
+  },
+  "output": {
+    "directory": "/app/outputs",
+    "auto_save": true,
+    "formats": [
+      "txt",
+      "json",
+      "csv"
+    ]
+  },
+  "appearance": {
+    "theme": "dark",
+    "language": "en",
+    "font_size": 14
+  },
+  "features": {
+    "FULL_ANALYSIS_LEGACY_V1": false,
+    "FULL_ANALYSIS_OPTIONAL_AI_REPORT": false,
+    "FULL_ANALYSIS_V2": true
+  }
+}

@@ -1,0 +1,340 @@
+# m3mx tool — Full Analysis V2 Windows detection rules
+
+rules:
+
+  # -----------------------------------------------------------------------
+  - id: win.powershell_encoded
+    title: PowerShell encoded command (-EncodedCommand)
+    description: |
+      PowerShell launched with the ``-EncodedCommand`` (``-enc``) flag,
+      which carries a Base64-wrapped script body. Common to red-team
+      tooling and many real intrusions; rarely seen in routine IT scripts.
+    applies_to: [windows]
+    artifact_type: process
+    match:
+      field_regex:
+        cmdline: '(?i)(?:^|\s)-e(?:n(?:c(?:odedcommand)?)?)?(?:\s|$)'
+    base_score: 10            # high; critical requires correlation (Phase 6)
+    confidence: 0.85
+    category: process
+    mitre:
+      - technique: T1059.001
+        name: PowerShell
+        tactic: Execution
+        reason: |
+          The -EncodedCommand parameter is a PowerShell-specific
+          execution path for Base64-wrapped payloads.
+        confidence: 0.9
+      - technique: T1027
+        name: Obfuscated Files or Information
+        tactic: Defense Evasion
+        reason: |
+          Encoded-command parameter is itself an obfuscation step —
+          the script body never appears on disk in plain form.
+        confidence: 0.75
+    false_positive_notes: |
+      Some legitimate management agents (SCCM, ConfigMgr, certain admin
+      scripts) use -enc to ship multi-line scripts across the wire. Look
+      for a known parent process and a benign decoded payload before
+      attribution.
+    recommended_validation: |
+      1. Decode the Base64 argument and inspect the actual script.
+      2. Check parent — encoded PowerShell launched by Office, browsers,
+         or LOLBins is highly suspicious.
+      3. Look for outbound network connections on the same PID.
+    enabled: true
+
+  # -----------------------------------------------------------------------
+  - id: win.powershell_iex_downloader
+    title: PowerShell IEX / DownloadString cradle
+    description: |
+      PowerShell command line contains the classic remote-execution
+      cradle: ``IEX``/``Invoke-Expression`` paired with
+      ``Net.WebClient.DownloadString`` or ``Invoke-WebRequest``.
+    applies_to: [windows]
+    artifact_type: process
+    match:
+      field_regex:
+        cmdline: '(?i)(?:IEX|Invoke-Expression)[\s(]+.{0,200}(?:DownloadString|DownloadFile|Invoke-WebRequest|iwr|Net\.WebClient)'
+    base_score: 12            # high
+    confidence: 0.9
+    category: process
+    mitre:
+      - technique: T1059.001
+        name: PowerShell
+        tactic: Execution
+        reason: |
+          IEX/Invoke-Expression directly invokes a downloaded payload
+          string via the PowerShell interpreter.
+        confidence: 0.9
+      - technique: T1105
+        name: Ingress Tool Transfer
+        tactic: Command and Control
+        reason: |
+          The DownloadString / Invoke-WebRequest call fetches the
+          payload from a remote location.
+        confidence: 0.85
+    false_positive_notes: |
+      Administrators sometimes use this idiom interactively to bootstrap
+      legitimate scripts (e.g. installing Chocolatey). The remote URL
+      and parent context are decisive.
+    recommended_validation: |
+      1. Extract the URL from the cmdline; check reputation.
+      2. Inspect the parent process and user context.
+      3. Look for the downloaded payload on disk.
+    enabled: true
+
+  # -----------------------------------------------------------------------
+  - id: win.certutil_urlcache_decode
+    title: certutil used as a downloader / decoder (LOLBin)
+    description: |
+      ``certutil`` invoked with ``-urlcache`` / ``-decode`` is a classic
+      LOLBin for fetching or decoding payloads while masquerading as a
+      certificate-management tool.
+    applies_to: [windows]
+    artifact_type: process
+    match:
+      field_regex:
+        cmdline: '(?i)\bcertutil(?:\.exe)?\b[^\n]*-(?:urlcache|decode|decodehex)\b'
+    base_score: 11
+    confidence: 0.9
+    category: process
+    mitre:
+      - technique: T1140
+        name: Deobfuscate/Decode Files or Information
+        tactic: Defense Evasion
+        reason: |
+          certutil -decode / -decodehex is a known LOLBin path to decode
+          Base64 / hex payloads dropped to disk.
+        confidence: 0.85
+      - technique: T1105
+        name: Ingress Tool Transfer
+        tactic: Command and Control
+        reason: |
+          certutil -urlcache downloads remote content while masquerading
+          as a benign certificate utility.
+        confidence: 0.85
+    false_positive_notes: |
+      Some IT scripts legitimately use certutil for hash verification.
+      The -urlcache / -decode subcommands, however, are rarely benign.
+    recommended_validation: |
+      1. Extract the URL and the dropped file from the cmdline.
+      2. Inspect the dropped file content.
+      3. Correlate with subsequent process creation.
+    enabled: true
+
+  # -----------------------------------------------------------------------
+  - id: win.mshta_remote_payload
+    title: mshta invoked with a remote URL payload
+    description: |
+      ``mshta.exe`` is being used to execute HTA content hosted on a
+      remote URL — another well-known LOLBin path that bypasses many
+      script-execution policies.
+    applies_to: [windows]
+    artifact_type: process
+    match:
+      field_regex:
+        cmdline: '(?i)\bmshta(?:\.exe)?\b[^\n]*https?://'
+    base_score: 12
+    confidence: 0.9
+    category: process
+    mitre:
+      - technique: T1218.005
+        name: Mshta
+        tactic: Defense Evasion
+        reason: |
+          mshta is a signed Microsoft binary used to execute HTA content,
+          often abused to bypass application allowlisting policies.
+        confidence: 0.9
+    false_positive_notes: |
+      Rare. Some legacy legitimate apps shell out to mshta with a local
+      HTA file path — a remote http(s):// URL is essentially never benign.
+    recommended_validation: |
+      1. Resolve the URL and inspect the HTA content.
+      2. Check the parent (Office / browser parents are highly suspicious).
+    enabled: true
+
+  # -----------------------------------------------------------------------
+  - id: win.service_in_user_writable_path
+    title: Service binary points into a user-writable directory
+    description: |
+      A configured Windows service's ``Binary`` field resolves to a
+      path under Temp / AppData / Users\\Public. This is a classic
+      persistence mechanism — services run with elevated privileges.
+    applies_to: [windows]
+    artifact_type: service
+    match:
+      field_regex:
+        binary: '(?i)\\(?:Windows\\)?Temp\\|\\AppData\\Local\\Temp\\|\\Users\\Public\\|\\ProgramData\\.*\\update\\'
+    base_score: 12
+    confidence: 0.8
+    category: persistence
+    mitre:
+      - technique: T1543.003
+        name: Windows Service
+        tactic: Persistence
+        reason: |
+          A service binary pointing at a user-writable directory is the
+          textbook way to maintain persistence with elevated context.
+        confidence: 0.85
+    false_positive_notes: |
+      Some legitimate vendor updaters install per-user services pointing
+      at AppData (e.g. Squirrel-based installers). Check the service's
+      DisplayName and digital signature.
+    recommended_validation: |
+      1. Inspect the on-disk binary at the Binary path.
+      2. Cross-reference DisplayName with the publisher.
+      3. Check for recent modifications to the path / file.
+    enabled: true
+    modifiers:
+      - apply: allowlisted_path_or_process
+
+  # -----------------------------------------------------------------------
+  - id: win.malfind_injection
+    title: Process memory region with executable + writable protection
+    description: |
+      malfind reported a memory region in a live process with
+      PAGE_EXECUTE_READWRITE (or similar) protection and no backing file
+      — the canonical signature for in-memory injected code / shellcode.
+    applies_to: [windows]
+    artifact_type: memory_region
+    match:
+      field_regex:
+        protection: '(?i)EXECUTE.*WRITE|RWX|PAGE_EXECUTE_READWRITE'
+    base_score: 15            # critical — strong standalone evidence (memory)
+    confidence: 0.88
+    category: memory
+    mitre:
+      - technique: T1055
+        name: Process Injection
+        tactic: Defense Evasion
+        reason: |
+          A read-write-execute region with no on-disk backing in a
+          live process is the canonical malfind signal for injected
+          code or shellcode.
+        confidence: 0.9
+    false_positive_notes: |
+      JIT compilers (browsers, .NET, JVM) allocate RWX regions in normal
+      operation. Treat malfind hits as candidates and correlate against
+      the owning process — RWX in a non-JIT process is the actual signal.
+    recommended_validation: |
+      1. Note the owning PID and dump the suspect VAD region.
+      2. Disassemble — JIT regions look like compiled code, shellcode
+         typically does not.
+      3. Cross-reference with ldrmodules for the same PID.
+    enabled: true
+
+  # -----------------------------------------------------------------------
+  - id: win.suspicious_named_process
+    title: Process name matches a known-attacker tool
+    description: |
+      A process name matches a tool commonly used in post-exploitation
+      (mimikatz, procdump, psexec, nc/ncat, gsecdump, lsadump, wce,
+      pwdump, beacon, cobaltstrike, meterpreter). Renaming defeats this
+      rule — but operators frequently leave the canonical name.
+    applies_to: [windows]
+    artifact_type: process
+    match:
+      field_regex:
+        name: '(?i)^(?:mimikatz|procdump(?:64)?|psexec(?:svc)?|nc\.exe|ncat\.exe|gsecdump|lsadump|wce|pwdump\d*|beacon|cobaltstrike|meterpreter)(?:\.exe)?$'
+    base_score: 11
+    confidence: 0.85
+    category: process
+    mitre:
+      - technique: T1003
+        name: OS Credential Dumping
+        tactic: Credential Access
+        reason: |
+          Several of the listed tools (mimikatz, gsecdump, pwdump,
+          lsadump, wce, procdump targeting lsass) exist specifically
+          to extract credentials from a live host.
+        confidence: 0.7
+      - technique: T1059
+        name: Command and Scripting Interpreter
+        tactic: Execution
+        reason: |
+          Tools like psexec, beacon, and Cobalt Strike provide remote
+          execution capabilities the operator uses interactively.
+        confidence: 0.7
+    false_positive_notes: |
+      Defenders sometimes ship these tools in their own toolboxes
+      (procdump for legitimate process dumping, psexec for admin
+      remoting). Confirm the cmdline + parent + signing chain before
+      treating as confirmed compromise.
+    recommended_validation: |
+      1. Inspect the binary's signature and on-disk hash.
+      2. Check the parent process (a legitimate admin run usually has
+         explorer.exe or cmd.exe parent; a beacon-driven one usually has
+         svchost.exe or rundll32.exe parent).
+      3. Cross-reference with malfind / ldrmodules on the same PID.
+    enabled: true
+
+  - id: win.regsvr32_remote_dll
+    title: regsvr32 fetching a remote scriptlet (Squiblydoo)
+    description: |
+      regsvr32 is being driven with the ``/i:http(s)://...`` switch and
+      ``scrobj.dll``, the canonical Squiblydoo signed-binary bypass
+      that registers a remotely hosted COM scriptlet.
+    applies_to: [windows]
+    artifact_type: process
+    match:
+      field_regex:
+        cmdline: '(?i)\bregsvr32(?:\.exe)?\b[^\n]*(?:/i:|/n:|/u:|/s)\s*https?://[^\s]+\.sct\b|\bregsvr32(?:\.exe)?\b[^\n]*\bscrobj\.dll\b'
+    base_score: 13
+    confidence: 0.9
+    category: process
+    mitre:
+      - technique: T1218.010
+        name: Regsvr32
+        tactic: Defense Evasion
+        reason: |
+          The /i:http(s) form of regsvr32 + scrobj.dll is the well-known
+          Squiblydoo / "regsvr32 scriptlet" execution path that bypasses
+          many application-allowlisting policies.
+        confidence: 0.9
+    false_positive_notes: |
+      Rare. Legitimate uses of regsvr32 register local .dll files; the
+      ``/i:http(s)`` form is essentially never benign.
+    recommended_validation: |
+      1. Capture the URL and the scriptlet content.
+      2. Check the parent process — Office or browser parents are highly suspicious.
+      3. Correlate with outbound network on the same PID.
+    enabled: true
+
+  - id: win.ldrmodules_unlinked_dll
+    title: Mapped DLL missing from both loader lists (reflective load)
+    description: |
+      ldrmodules reports a DLL that is mapped in memory (``InMem=true``)
+      but absent from both the InLoad and InInit lists. Consistent with
+      reflective DLL injection or unhooking.
+    applies_to: [windows]
+    artifact_type: module
+    match:
+      field_equals:
+        in_mem: "True"
+        in_load: "False"
+        in_init: "False"
+    base_score: 13
+    confidence: 0.78
+    category: memory
+    mitre:
+      - technique: T1055.001
+        name: Dynamic-link Library Injection
+        tactic: Defense Evasion
+        reason: |
+          A DLL mapped into a process but absent from both loader lists
+          is the textbook ldrmodules signal for reflective DLL injection
+          (the loader was never asked to register it).
+        confidence: 0.85
+    false_positive_notes: |
+      A handful of legitimate modules (some EDR shims, certain shell
+      extensions) can transiently show this state. An empty MappedPath
+      is the strongest tell — go straight to the dumped region.
+    recommended_validation: |
+      1. Dump the suspect VAD region and inspect for PE / shellcode.
+      2. Check whether the MappedPath is empty (strongest signal) or
+         points to a System32 DLL (more likely to be transient).
+      3. Cross-reference with malfind on the same PID.
+    enabled: true
+    modifiers:
+      - apply: allowlisted_path_or_process

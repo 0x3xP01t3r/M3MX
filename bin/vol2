@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+# M3MX — Volatility 2 launcher.
+# Dispatches the bundled bin/volatility2/vol.py under python2.
+set -e
+SELF_DIR="$(cd "$(dirname "$0")" && pwd)"
+exec python2 "$SELF_DIR/volatility2/vol.py" "$@"

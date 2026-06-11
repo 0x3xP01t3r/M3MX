@@ -1,0 +1,61 @@
+# M3MX — files NOT to send to the Docker build context.
+#
+# Keep `config.json` in scope — it's a real file we COPY into the image
+# (and then bind-mount over at runtime so changes persist).
+
+.git
+.gitignore
+.gitattributes
+.github/
+.venv/
+venv/
+env/
+
+# Editor / OS cruft
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Python cruft
+__pycache__/
+**/__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# AI assistant config
+.claude/
+.codex
+CLAUDE.md
+.aider*
+
+# Local secrets
+.env
+.env.local
+.env.*
+
+# Runtime data (mounted at runtime instead)
+uploads/*
+!uploads/.gitkeep
+outputs/*
+!outputs/.gitkeep
+
+# Memory images (just in case)
+*.raw
+*.mem
+*.dmp
+*.vmem
+*.lime
+*.img
+
+# Logs
+*.log
+
+# Misc
+*.bak
+*~
+*.tmp

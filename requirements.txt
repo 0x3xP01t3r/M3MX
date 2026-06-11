@@ -1,0 +1,35 @@
+# m3mx tool — Memory Forensics AI-Powered GUI Platform
+# Python 3.9+
+
+# --- Web framework ---
+Flask==3.0.3
+Flask-Cors==4.0.1
+Werkzeug==3.0.3
+
+# --- Concurrency / streaming ---
+gevent==24.2.1
+
+# --- AI providers ---
+openai>=1.40.0
+anthropic>=0.34.0
+google-generativeai>=0.7.0
+
+# --- HTTP (Ollama + generic) ---
+requests==2.32.3
+httpx==0.27.0
+
+# --- Data handling ---
+PyYAML==6.0.1
+pandas==2.2.2
+numpy==1.26.4
+
+# --- Report generation ---
+markdown==3.6
+Jinja2==3.1.4
+python-docx==1.1.2
+reportlab==4.2.2
+
+# --- Utility ---
+colorama==0.4.6
+tqdm==4.66.4
+psutil==6.0.0

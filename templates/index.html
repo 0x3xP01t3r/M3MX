@@ -1,0 +1,898 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>{{ app_name }} — Memory Forensics</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;500;600;700;800&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer"/>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}"/>
+</head>
+<body>
+<canvas id="neural"></canvas>
+<div id="memMapBg"></div>
+<div class="grain"></div>
+<div class="screen-reveal" id="screenReveal"></div>
+
+
+<!-- BOOT -->
+<div id="boot">
+  <div class="boot-wrap">
+    <div class="boot-ring"></div>
+    <div class="boot-ring r2"></div>
+    <div class="boot-ring r3"></div>
+    <div class="boot-core">
+      <div class="boot-logo">M3MX</div>
+    </div>
+    <div class="boot-pct" id="bootPct">0</div>
+    <svg class="boot-progress-ring" viewBox="0 0 200 200">
+      <circle cx="100" cy="100" r="88" fill="none" stroke="rgba(255,255,255,0.04)" stroke-width="1"/>
+      <circle cx="100" cy="100" r="88" fill="none" stroke="var(--a)" stroke-width="1.5"
+        stroke-dasharray="553" stroke-dashoffset="553" id="bootRing"
+        stroke-linecap="round" transform="rotate(-90 100 100)"/>
+    </svg>
+    <div class="boot-log" id="bootLog">Calibrating neural interface...</div>
+    <div class="boot-dots"><span></span><span></span><span></span><span></span><span></span></div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app" class="app hidden">
+
+  <!-- TOP STRIP -->
+  <div class="top-strip">
+    <div class="ts-left">
+      <div class="wordmark">M3MX<span></span></div>
+      <div class="ts-div"></div>
+      <div class="session-badge" id="sessionBadge">
+        <span class="sb-dot" id="sbDot"></span>
+        <span id="sbText">No image loaded</span>
+      </div>
+    </div>
+    <div class="ts-center">
+      <div class="scan-bar hidden" id="scanBar">
+        <span class="scanbar-lbl" id="scanLbl">Scanning...</span>
+        <div class="scanbar-track"><div class="scanbar-fill" id="scanFill"></div></div>
+        <span class="scanbar-pct" id="scanPct">0%</span>
+      </div>
+    </div>
+    <div class="ts-right">
+      <button class="ts-btn rel" id="alertBtn" onclick="toggleAlerts()">
+      <button class="ts-btn" onclick="toggleTheme()">
+        <svg id="themeIco" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" width="15" height="15"><circle cx="10" cy="10" r="4"/><line x1="10" y1="1" x2="10" y2="3"/><line x1="10" y1="17" x2="10" y2="19"/><line x1="1" y1="10" x2="3" y2="10"/><line x1="17" y1="10" x2="19" y2="10"/><line x1="3.5" y1="3.5" x2="5" y2="5"/><line x1="15" y1="15" x2="16.5" y2="16.5"/><line x1="3.5" y1="16.5" x2="5" y2="15"/><line x1="15" y1="5" x2="16.5" y2="3.5"/></svg>
+      </button>
+      <div class="user-orb">AN</div>
+    </div>
+  </div>
+
+  <!-- ALERT DRAWER -->
+  <div class="alert-drawer hidden" id="alertDrawer">
+    <div class="ad-hd"><span>Threat Alerts</span><button onclick="clearAlerts()">Clear all</button></div>
+    <div id="alertList">
+      <div style="padding:14px;color:var(--t2);font-family:var(--fm);font-size:.7rem">No alerts yet — run an analysis to populate.</div>
+    </div>
+  </div>
+
+  <!-- PILL NAV -->
+  <div class="pill-nav" id="pillNav">
+    <button class="pn-btn active" onclick="navigateTo('home')" title="Home"><i class="fa-solid fa-house"></i><span>Home</span></button>
+    <button class="pn-btn" onclick="navigateTo('full')" title="Full Analysis"><i class="fa-solid fa-shield-virus"></i><span>Analysis</span></button>
+    <button class="pn-btn" onclick="navigateTo('manual')" title="Manual Mode"><i class="fa-solid fa-terminal"></i><span>Manual</span></button>
+    <button class="pn-btn" onclick="navigateTo('automation')" title="Automation"><i class="fa-solid fa-bolt"></i><span>Auto</span></button>
+    <button class="pn-btn" onclick="navigateTo('extractor')" title="Extractor"><i class="fa-solid fa-folder-open"></i><span>Extractor</span></button>
+    <button class="pn-btn" onclick="navigateTo('ai')" title="AI Agent"><i class="fa-solid fa-robot"></i><span>Agent</span></button>
+    <button class="pn-btn" onclick="navigateTo('settings')" title="Settings"><i class="fa-solid fa-gear"></i><span>Settings</span></button>
+  </div>
+
+  <!-- MAIN STAGE -->
+  <main class="stage" id="stage">
+
+    <!-- HOME -->
+    <div class="scene active" id="scene-home">
+      <div class="home-layout-grid">
+        <!-- Welcome panel -->
+        <div class="home-welcome">
+          <div class="home-hero">
+            <div class="home-hero-badge">
+              <i class="fa-solid fa-shield-halved"></i>
+              AI-Powered · DFIR Platform
+            </div>
+            <h1 class="home-title">Memory Forensics<br/><span class="gradient-text">at Intelligence Scale</span></h1>
+            <p class="home-subtitle">
+              M3MX Cortex wraps Volatility 3 with an LLM agent to automate threat hunting,
+              artifact extraction, and MITRE ATT&CK mapping from raw memory images.
+            </p>
+
+            <div class="hero-cta-row">
+              <button class="cta-main" onclick="document.getElementById('fileInput').click()">
+                <i class="fa-solid fa-shield-virus"></i> Launch End-to-End Analysis
+              </button>
+              <button class="cta-sec" onclick="loadDemo()">
+                <i class="fa-solid fa-graduation-cap"></i> Demo Image
+              </button>
+            </div>
+
+            <div class="hero-metrics">
+              <article class="hero-metric-card">
+                <p class="hero-metric-label">Detection Coverage</p>
+                <p class="hero-metric-value">92%</p>
+                <p class="hero-metric-sub">mapped to MITRE ATT&CK tactics</p>
+              </article>
+              <article class="hero-metric-card">
+                <p class="hero-metric-label">Investigation Time</p>
+                <p class="hero-metric-value">68%</p>
+                <p class="hero-metric-sub">faster triage vs. manual-only flow</p>
+              </article>
+              <article class="hero-metric-card">
+                <p class="hero-metric-label">Plugin Reach</p>
+                <p class="hero-metric-value">80+</p>
+                <p class="hero-metric-sub">Volatility plugins orchestrated</p>
+              </article>
+            </div>
+          </div>
+
+          <!-- Feature cards -->
+          <div class="feature-grid">
+            <div class="feature-card">
+              <div class="feature-card-icon" style="color: var(--a)">
+                <i class="fa-solid fa-bolt"></i>
+              </div>
+              <h3>Automated Analysis</h3>
+              <p>Full-spectrum scan with AI-driven threat classification and severity scoring across all Volatility plugins.</p>
+            </div>
+            <div class="feature-card">
+              <div class="feature-card-icon" style="color: var(--green)">
+                <i class="fa-solid fa-terminal"></i>
+              </div>
+              <h3>Manual Analysis</h3>
+              <p>Granular control over 80+ Volatility 3 plugins with structured result tables and export capabilities.</p>
+            </div>
+            <div class="feature-card">
+              <div class="feature-card-icon" style="color: var(--amber)">
+                <i class="fa-solid fa-robot"></i>
+              </div>
+              <h3>AI Agent</h3>
+              <p>Conversational LLM agent that interprets forensic data, suggests next steps, and explains findings in plain language.</p>
+            </div>
+            <div class="feature-card">
+              <div class="feature-card-icon" style="color: var(--red)">
+                <i class="fa-solid fa-folder-open"></i>
+              </div>
+              <h3>File Extractor</h3>
+              <p>Browse and extract memory-resident files with hex previews, metadata panels, and hash verification.</p>
+            </div>
+          </div>
+
+          <section class="capstone-proof">
+            <header class="capstone-proof-header">
+              <h2>Capstone Readiness Snapshot</h2>
+              <p>Designed as a complete incident response workflow, not only a UI wrapper.</p>
+            </header>
+
+            <div class="proof-grid">
+              <article class="proof-card">
+                <span class="proof-chip">Problem Fit</span>
+                <h3>Real DFIR Operational Gap</h3>
+                <p>Addresses analyst fatigue by turning fragmented memory artifacts into a unified, explainable threat narrative.</p>
+              </article>
+              <article class="proof-card">
+                <span class="proof-chip">Engineering Depth</span>
+                <h3>Hybrid Pipeline Architecture</h3>
+                <p>Combines deterministic Volatility output with LLM reasoning to prioritize high-risk findings and next actions.</p>
+              </article>
+              <article class="proof-card">
+                <span class="proof-chip">Measurable Outcome</span>
+                <h3>Decision-Speed Improvement</h3>
+                <p>Produces structured evidence, timeline correlation, and exportable reports for repeatable incident handling.</p>
+              </article>
+            </div>
+
+            <ol class="delivery-track">
+              <li><span>01</span> Data Acquisition and Session Profiling</li>
+              <li><span>02</span> Automated + Manual Parallel Analysis</li>
+              <li><span>03</span> AI-Assisted Interpretation and Reporting</li>
+            </ol>
+          </section>
+        </div>
+
+        <!-- Load session panel -->
+        <div class="home-sidebar-panel">
+          <div class="panel-header">
+            <h2 class="panel-title">
+              <i class="fa-solid fa-upload" style="color:var(--blue)"></i>
+              Open Memory Image
+            </h2>
+          </div>
+
+          <div class="panel-kpi-strip">
+            <div class="panel-kpi">
+              <strong>RAW / DMP</strong>
+              <span>Supported evidence</span>
+            </div>
+            <div class="panel-kpi">
+              <strong>Up to 10 GB</strong>
+              <span>Max image size</span>
+            </div>
+            <div class="panel-kpi">
+              <strong>ATT&amp;CK</strong>
+              <span>Behavior mapping</span>
+            </div>
+          </div>
+
+          <div class="session-readiness-card">
+            <div class="session-readiness-header">
+              <span>Session Readiness</span>
+              <span class="status-chip status-chip-idle" id="panel-status-chip">Waiting</span>
+            </div>
+            <div class="session-readiness-grid">
+              <div>
+                <span>Evidence</span>
+                <strong id="panel-evidence-name">Awaiting image</strong>
+              </div>
+              <div>
+                <span>Case label</span>
+                <strong id="panel-case-label">Capstone demo</strong>
+              </div>
+              <div>
+                <span>Profile</span>
+                <strong id="panel-profile-label">Auto-detect</strong>
+              </div>
+              <div>
+                <span>Expected outputs</span>
+                <strong>Timeline, MITRE, report</strong>
+              </div>
+            </div>
+          </div>
+
+          <!-- Drag & Drop Zone -->
+          <div class="drop-zone" id="drop-zone" onclick="document.getElementById('fileInput').click()">
+            <div class="drop-zone-inner">
+              <div class="drop-zone-icon">
+                <i class="fa-solid fa-memory"></i>
+              </div>
+              <p class="drop-zone-title">Drop memory image here</p>
+              <p class="drop-zone-sub">or <span class="drop-zone-link">click to browse</span></p>
+              <p class="drop-zone-hint">.raw · .mem · .dmp · .vmem · .lime · .img · .bin</p>
+              <p class="drop-zone-hint" style="opacity:.55;font-size:.68rem;margin-top:2px">up to 10 GB accepted</p>
+            </div>
+            <input type="file" id="fileInput" accept=".raw,.mem,.dmp,.img,.vmem,.bin,.lime" style="display:none" onchange="handleFile(event)">
+          </div>
+
+          <!-- Output dir + Save -->
+          <div class="form-group">
+            <label class="form-label" for="output-dir">
+              <i class="fa-solid fa-folder-tree"></i> Output Directory
+            </label>
+            <div class="input-with-action">
+              <input type="text" id="output-dir" class="mono-input" placeholder="/home/kali/M3MX.tool/m3mx-tool/outputs"/>
+              <button class="ghost-btn" id="browse-dir-btn" title="Browse folders" style="padding:6px 10px">
+                <i class="fa-solid fa-folder-open"></i>
+              </button>
+              <button class="cta-main sm" id="save-dir-btn" title="Persist this path" style="padding:6px 14px">
+                <i class="fa-solid fa-floppy-disk"></i>
+              </button>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="profile-select">
+              <i class="fa-solid fa-microchip"></i> OS Profile
+            </label>
+            <select id="profile-select" class="mono-input">
+              <option value="auto">Auto-detect (recommended)</option>
+              <option value="Win10x64">Windows 10 x64</option>
+              <option value="Win10x64_19041">Windows 10 19041</option>
+              <option value="Win7SP1x64">Windows 7 SP1 x64</option>
+              <option value="Ubuntu22">Ubuntu 22.04</option>
+            </select>
+          </div>
+
+          <div class="action-row">
+            <button class="cta-main full-w" id="start-analysis-btn" onclick="navigateTo('full')">
+              <i class="fa-solid fa-play"></i> Run Full Analysis
+            </button>
+            <button class="cta-sec full-w" style="margin-top:8px" onclick="navigateTo('manual')">
+              <i class="fa-solid fa-terminal"></i> Open Manual Mode
+            </button>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <!-- FULL ANALYSIS — adapted from old design's terminal/story/findings layout -->
+    <div class="scene" id="scene-full">
+      <div class="scene-hd" style="margin-bottom:20px">
+        <div>
+          <span class="sh-ey">VOLATILITY ENGINE</span>
+          <h2 class="sh-ttl">Full Analysis Suite</h2>
+          <span class="sh-ey" style="margin-top:6px;color:var(--t2);font-weight:normal;text-transform:none;letter-spacing:.05em" id="fa-image-label">No memory image loaded</span>
+        </div>
+        <div style="display:flex;gap:10px;align-items:center">
+          <span class="status-chip status-chip-idle" id="fa-status-pill">Idle</span>
+          <button class="ghost-btn" id="fa-export-btn" disabled>
+            <i class="fa-solid fa-download"></i> Export
+          </button>
+          <button class="cta-main sm" id="fa-start-btn" onclick="runFullSuite()">
+            <i class="fa-solid fa-rocket"></i> Start Full Analysis
+          </button>
+        </div>
+      </div>
+
+      <!-- Stat cards -->
+      <div class="full-grid" id="fullGrid" style="margin-bottom:20px">
+        <div class="fg-c"><div class="fgc-hd"><div><div class="fgc-nm">Plugins run</div><div class="fgc-pl"><span class="fgc-st" id="fa-stat-plugins" style="font-size:1.4rem;font-weight:700;color:var(--t0)">0</span></div></div></div></div>
+        <div class="fg-c"><div class="fgc-hd"><div><div class="fgc-nm">Total findings</div><div class="fgc-pl"><span class="fgc-st" id="fa-stat-findings" style="font-size:1.4rem;font-weight:700;color:var(--t0)">0</span></div></div></div></div>
+        <div class="fg-c hot"><div class="fgc-hd"><div><div class="fgc-nm">Critical</div><div class="fgc-pl"><span class="fgc-st danger" id="fa-stat-critical" style="font-size:1.4rem;font-weight:700">0</span></div></div></div></div>
+        <div class="fg-c"><div class="fgc-hd"><div><div class="fgc-nm">High</div><div class="fgc-pl"><span class="fgc-st" id="fa-stat-high" style="font-size:1.4rem;font-weight:700;color:var(--amber)">0</span></div></div></div></div>
+        <div class="fg-c"><div class="fgc-hd"><div><div class="fgc-nm">Elapsed</div><div class="fgc-pl"><span class="fgc-st" id="fa-stat-elapsed" style="font-size:1.4rem;font-weight:700;color:var(--t0)">0s</span></div></div></div></div>
+      </div>
+
+      <!-- Attack story panel -->
+      <div class="results-slab" id="fa-story-panel" style="display:none;border-color:rgba(94,234,212,.35);box-shadow:0 0 0 1px rgba(94,234,212,.08);margin-bottom:18px">
+        <div class="rsl-hd" style="background:linear-gradient(90deg,rgba(94,234,212,.18),transparent)">
+          <span><i class="fa-solid fa-book-open" style="margin-right:8px;color:var(--a)"></i>AI Attack Story</span>
+          <span style="font-size:.65rem;color:var(--t2)" id="fa-story-meta"></span>
+        </div>
+        <div id="fa-story-body" style="padding:18px 22px;line-height:1.55;font-size:.85rem;max-height:420px;overflow:auto;color:var(--t1)">
+          <em style="opacity:.55">Awaiting findings…</em>
+        </div>
+      </div>
+
+      <!-- ================================================================ -->
+      <!-- Phase 11 — Full Analysis V2 additive panels                      -->
+      <!-- Everything below is hidden by default and revealed only when     -->
+      <!-- the V2 pipeline emits the corresponding SSE event. None of it    -->
+      <!-- alters the existing findings table, story panel, or export flow. -->
+      <!-- ================================================================ -->
+
+      <!-- V2 Overview cards (visible by default after Phase A) -->
+      <div id="fa2-overview" class="fa2-overview" style="margin-bottom:18px">
+        <div class="fa2-card" id="fa2-card-os">
+          <div class="fa2-card-lbl">Detected OS</div>
+          <div class="fa2-card-val" id="fa2-os-value">—</div>
+          <div class="fa2-card-sub" id="fa2-os-sub">awaiting analysis</div>
+        </div>
+        <div class="fa2-card" id="fa2-card-symbols">
+          <div class="fa2-card-lbl">Symbol Status</div>
+          <div class="fa2-card-val" id="fa2-symbols-value">—</div>
+          <div class="fa2-card-sub" id="fa2-symbols-sub">awaiting analysis</div>
+        </div>
+        <div class="fa2-card" id="fa2-card-plugins">
+          <div class="fa2-card-lbl">Plugins</div>
+          <div class="fa2-card-val"><span id="fa2-plugins-ok">0</span> <span class="fa2-card-sub" style="font-size:.65rem">ok</span> · <span id="fa2-plugins-fail" style="color:var(--red)">0</span> <span class="fa2-card-sub" style="font-size:.65rem">failed</span></div>
+        </div>
+        <div class="fa2-card" id="fa2-card-crithigh">
+          <div class="fa2-card-lbl">Critical / High</div>
+          <div class="fa2-card-val"><span id="fa2-crit" style="color:var(--red)">0</span> · <span id="fa2-high" style="color:var(--amber)">0</span></div>
+        </div>
+        <div class="fa2-card" id="fa2-card-chains">
+          <div class="fa2-card-lbl">Attack Chains</div>
+          <div class="fa2-card-val" id="fa2-chains-count">0</div>
+        </div>
+        <div class="fa2-card" id="fa2-card-mitre">
+          <div class="fa2-card-lbl">MITRE Techniques</div>
+          <div class="fa2-card-val" id="fa2-mitre-count">0</div>
+        </div>
+        <div class="fa2-card" id="fa2-card-report">
+          <div class="fa2-card-lbl">Report</div>
+          <div class="fa2-card-val" id="fa2-report-status">pending</div>
+        </div>
+      </div>
+
+      <!-- V2 Attack Chains panel — visible with empty-state placeholder -->
+      <div class="results-slab fa2-slab" id="fa2-chains-panel" style="margin-bottom:18px">
+        <div class="rsl-hd">
+          <span><i class="fa-solid fa-link" style="margin-right:8px;color:var(--a)"></i>Attack Chains</span>
+          <span style="font-size:.65rem;color:var(--t2)" id="fa2-chains-meta"></span>
+        </div>
+        <div id="fa2-chains-body" class="fa2-panel-body fa2-empty">No attack chains yet — run Full Analysis to populate.</div>
+      </div>
+
+      <!-- V2 Timeline panel -->
+      <div class="results-slab fa2-slab" id="fa2-timeline-panel" style="margin-bottom:18px">
+        <div class="rsl-hd">
+          <span><i class="fa-solid fa-clock" style="margin-right:8px;color:var(--a)"></i>Timeline</span>
+          <span style="font-size:.65rem;color:var(--t2)" id="fa2-timeline-meta"></span>
+        </div>
+        <div id="fa2-timeline-body" class="fa2-panel-body fa2-empty">Timeline will appear after analysis.</div>
+      </div>
+
+      <!-- V2 MITRE Summary panel -->
+      <div class="results-slab fa2-slab" id="fa2-mitre-panel" style="margin-bottom:18px">
+        <div class="rsl-hd">
+          <span><i class="fa-solid fa-bullseye" style="margin-right:8px;color:var(--a)"></i>MITRE ATT&amp;CK Summary</span>
+          <span style="font-size:.65rem;color:var(--t2)" id="fa2-mitre-meta"></span>
+        </div>
+        <div id="fa2-mitre-body" class="fa2-panel-body fa2-empty">MITRE summary will appear after analysis.</div>
+      </div>
+
+      <!-- V2 Deterministic Report links + AI Report -->
+      <div class="results-slab fa2-slab" id="fa2-report-panel" style="margin-bottom:18px">
+        <div class="rsl-hd">
+          <span><i class="fa-solid fa-file-lines" style="margin-right:8px;color:var(--a)"></i>Reports</span>
+          <span style="font-size:.65rem;color:var(--t2)" id="fa2-report-meta"></span>
+        </div>
+        <div class="fa2-panel-body">
+          <div id="fa2-report-links" class="fa2-link-row fa2-empty-inline">Report links appear after report generation.</div>
+          <div id="fa2-pdf-export-section" style="margin-top:14px">
+            <button class="cta-main sm" id="fa2-pdf-export-btn" disabled
+                    onclick="exportReportPdf()" type="button"
+                    title="Run Full Analysis first.">
+              <i class="fa-solid fa-file-pdf"></i> Download PDF Report
+            </button>
+            <span id="fa2-pdf-export-status" style="font-size:.7rem;color:var(--t2);margin-left:12px">awaiting Full Analysis completion</span>
+          </div>
+          <div id="fa2-ai-report-section" style="margin-top:14px;display:none">
+            <button class="cta-main sm" id="fa2-ai-report-btn" disabled
+                    onclick="runAIReport()" type="button"
+                    title="Run Full Analysis first before generating an AI Report.">
+              <i class="fa-solid fa-wand-magic-sparkles"></i> Generate AI Report
+            </button>
+            <span id="fa2-ai-report-status" style="font-size:.7rem;color:var(--t2);margin-left:12px">awaiting Full Analysis completion</span>
+            <div id="fa2-ai-report-body" style="display:none;margin-top:12px;padding:14px 16px;background:var(--bg0);border:1px solid var(--border);border-radius:8px;line-height:1.55;font-size:.85rem;max-height:480px;overflow:auto;color:var(--t1)"></div>
+            <div id="fa2-ai-report-links" class="fa2-link-row" style="margin-top:10px"></div>
+          </div>
+          <div id="fa2-ai-report-hint" style="margin-top:10px;font-size:.7rem;color:var(--t2)">Enable AI Report from Settings.</div>
+        </div>
+      </div>
+
+      <!-- End Phase 11 V2 additions ============================== -->
+
+      <!-- Live log (full width, on top) -->
+      <div class="results-slab fa-log-slab">
+        <div class="rsl-hd">
+          <span><i class="fa-solid fa-terminal" style="margin-right:8px;color:var(--a)"></i>Live Execution Log</span>
+          <button class="ghost-btn" id="fa-log-clear-btn" title="Clear log"><i class="fa-solid fa-broom"></i> Clear</button>
+        </div>
+        <pre id="fa-terminal"><span class="fa-log-dim">$ awaiting start…</span></pre>
+      </div>
+
+      <!-- Findings (full-width section below, larger + clearer) -->
+      <section class="fa-findings-section">
+        <div class="fa-findings-section-hd">
+          <div>
+            <h3 class="fa-findings-ttl"><i class="fa-solid fa-flag" style="color:var(--amber)"></i> Findings</h3>
+            <span class="fa-findings-sub" id="fa-findings-sub">Run an analysis to populate this table.</span>
+          </div>
+          <div class="fa-findings-toolbar">
+            <input type="text" id="fa-findings-filter" placeholder="Filter findings…" class="mono-input"/>
+            <select id="fa-findings-sev-filter" class="mono-input">
+              <option value="">All severities</option>
+              <option value="critical">Critical</option>
+              <option value="high">High</option>
+              <option value="medium">Medium</option>
+              <option value="low">Low</option>
+              <option value="info">Info</option>
+            </select>
+          </div>
+        </div>
+        <div class="fa-findings-wrap">
+          <table class="rsl-table fa-findings-table" id="fa-findings-table">
+            <thead>
+              <tr>
+                <th class="col-expand" style="width:28px"></th>
+                <th class="col-id">ID</th>
+                <th class="col-sev">Severity</th>
+                <th class="col-title">Title &amp; Description</th>
+                <th class="col-plugin">Plugin</th>
+                <th class="col-mitre">MITRE ATT&amp;CK</th>
+                <th class="col-conf">Conf.</th>
+              </tr>
+            </thead>
+            <tbody id="fa-findings-tbody">
+              <tr class="fa-empty">
+                <td colspan="7" style="padding:48px 24px;text-align:center;color:var(--t3)">
+                  <i class="fa-solid fa-inbox" style="font-size:1.6rem;display:block;margin-bottom:10px;opacity:.5"></i>
+                  Click <b>Start Full Analysis</b> above to populate findings.
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+
+    <!-- MANUAL -->
+    <div class="scene" id="scene-manual">
+      <div class="scene-hd" style="margin-bottom:20px;align-items:center">
+        <div>
+          <h2 class="sh-ttl">Manual Analysis</h2>
+          <span class="sh-ey" style="margin-top:6px;color:var(--t2);font-weight:normal;letter-spacing:.05em;text-transform:none">Select a Volatility 3 plugin and configure parameters</span>
+        </div>
+        <div style="display:flex;gap:8px">
+          <button class="ghost-btn" id="export-csv-btn" disabled><i class="fa-solid fa-file-csv"></i> Export CSV</button>
+          <button class="ghost-btn" id="export-json-btn" disabled><i class="fa-solid fa-file-code"></i> Export JSON</button>
+          <button class="ghost-btn" id="export-txt-btn" disabled><i class="fa-solid fa-file-lines"></i> Export TXT</button>
+        </div>
+      </div>
+
+      <div class="manual-layout">
+        <div class="ml-sidebar" style="background:var(--bg0);border:1px solid var(--border);border-radius:12px;display:flex;flex-direction:column;overflow:hidden">
+          <div style="padding:16px;border-bottom:1px solid var(--border)">
+            <div class="search-wrap" style="width:100%;border:none;padding:0;background:transparent">
+              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" width="14" height="14"><circle cx="6" cy="6" r="5"/><line x1="10" y1="10" x2="14" y2="14"/></svg>
+              <input type="text" placeholder="Search plugins..." oninput="filterPlugins(this.value)" id="pSearch" style="width:100%;font-size:.8rem"/>
+            </div>
+          </div>
+          <div id="pluginCatHeader" style="padding:16px 16px 8px 16px;font-family:var(--fc);font-size:.6rem;color:var(--t2);font-weight:700;letter-spacing:.1em;text-transform:uppercase">
+            PLUGINS <span style="opacity:.5;font-weight:normal;margin-left:4px" id="pluginCount">0</span>
+          </div>
+          <div class="plugin-deck" id="pluginDeck" style="flex:1;overflow-y:auto;border:none;border-radius:0;background:transparent"></div>
+        </div>
+
+        <div class="ml-main" style="display:flex;flex-direction:column;gap:20px;overflow:hidden">
+          <div style="background:var(--bg1);border:1px solid var(--border);border-radius:12px;padding:24px;flex-shrink:0">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px">
+              <div>
+                <h3 id="rfName" style="font-family:var(--fm);font-size:1.1rem;color:var(--t0);font-weight:700;margin-bottom:8px">Select a plugin</h3>
+                <p id="rfDesc" style="font-family:var(--fm);font-size:.75rem;color:var(--t2)">Pick a plugin from the left panel.</p>
+              </div>
+              <button class="cta-main" id="run-plugin-btn" onclick="execPlugin()" style="background:#6366f1;border-radius:6px;padding:10px 20px" disabled>
+                <i class="fa-solid fa-play" style="font-size:.8rem"></i> Run Plugin
+              </button>
+            </div>
+            <div>
+              <label style="font-family:var(--fm);font-size:.7rem;color:var(--t2);display:block;margin-bottom:8px;font-weight:600">Additional Parameters (optional)</label>
+              <input type="text" id="rfArgs" placeholder="e.g. --pid 1234" class="mono-input" style="max-width:380px;background:var(--bg0);padding:10px 14px;border-radius:6px"/>
+              <small style="display:block;margin-top:6px;font-size:10.5px;color:var(--t3)">Hint: <code>--pid 1234</code> to filter, <code>--dump</code> to extract.</small>
+            </div>
+          </div>
+
+          <div style="background:var(--bg0);border:1px solid var(--border);border-radius:12px;flex:1;display:flex;flex-direction:column;overflow:hidden">
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 20px;border-bottom:1px solid var(--border);background:var(--bg1)">
+              <div id="results-count" style="font-family:var(--fm);font-size:.7rem;color:var(--t2)">Run a plugin to see results.</div>
+              <div style="display:flex;align-items:center;gap:12px">
+                <input type="text" id="results-filter" placeholder="Search results..." class="mono-input" style="width:200px;padding:6px 12px;background:transparent;border-color:var(--border);font-size:.7rem"/>
+                <span id="results-filter-count" style="font-family:var(--fm);font-size:.7rem;color:var(--t0)">0 / 0</span>
+                <button class="ghost-btn" id="results-filter-prev" style="padding:4px 8px;background:var(--bg2);border-color:transparent"><i class="fa-solid fa-chevron-up"></i></button>
+                <button class="ghost-btn" id="results-filter-next" style="padding:4px 8px;background:var(--bg2);border-color:transparent"><i class="fa-solid fa-chevron-down"></i></button>
+                <button class="ghost-btn" id="copy-results-btn" style="padding:4px 8px;background:var(--bg2);border-color:transparent"><i class="fa-regular fa-copy"></i></button>
+              </div>
+            </div>
+            <div style="flex:1;overflow:auto;background:var(--bg0)" id="results-table-wrap">
+              <table class="rsl-table" id="results-table" style="width:100%;white-space:nowrap;display:none">
+                <thead id="results-thead"></thead>
+                <tbody id="results-tbody"></tbody>
+              </table>
+              <div id="results-placeholder" style="padding:60px 20px;text-align:center;color:var(--t3);font-family:var(--fm)">
+                <i class="fa-solid fa-terminal" style="font-size:2rem;opacity:.2;display:block;margin-bottom:12px"></i>
+                Plugin output will appear here
+              </div>
+            </div>
+            <div style="padding:12px 20px;border-top:1px solid var(--border);background:var(--bg1)">
+              <a href="#" id="toggle-raw-btn" style="font-family:var(--fm);font-size:.75rem;color:#6366f1;text-decoration:none"><i class="fa-solid fa-code" style="margin-right:6px"></i>Show raw output</a>
+              <pre id="raw-output" style="display:none;margin:8px 0 0;padding:10px 12px;background:#02040a;color:#cbd5e1;font-size:.7rem;font-family:var(--fm);max-height:200px;overflow:auto;white-space:pre-wrap"></pre>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- AUTOMATION -->
+    <div class="scene" id="scene-automation">
+      <div class="scene-hd auto-hd">
+        <div>
+          <h2 class="sh-ttl">Automation Workflows</h2>
+          <span class="sh-ey auto-sub">Build and run automated forensic analysis pipelines</span>
+        </div>
+        <div class="auto-hd-actions">
+          <button class="ghost-btn" id="auto-import-btn"><i class="fa-solid fa-file-import"></i> Import</button>
+          <button class="cta-main auto-new-btn" id="auto-new-btn"><i class="fa-solid fa-plus"></i> New Workflow</button>
+        </div>
+      </div>
+
+      <!-- ── Quick Playbooks ─────────────────────────────────────── -->
+      <section class="auto-section">
+        <h3 class="auto-section-ttl"><i class="fa-solid fa-bolt" style="color:var(--amber)"></i> Quick Playbooks</h3>
+        <div class="pb-grid">
+          <article class="pb-card" data-playbook="triage">
+            <div class="pb-icon pb-icon-red"><i class="fa-solid fa-gear"></i></div>
+            <h4 class="pb-title">Malware Triage</h4>
+            <p class="pb-chain"><code>pslist</code> → <code>malfind</code> → <code>netscan</code> → <code>cmdline</code> → <em>AI summary</em></p>
+            <div class="pb-pills"><span class="pb-pill">5 steps</span><span class="pb-pill">~2 min</span></div>
+            <button class="pb-run" data-run="triage"><i class="fa-solid fa-play"></i> Run</button>
+            <div class="pb-status" data-status="triage"></div>
+          </article>
+
+          <article class="pb-card" data-playbook="creds">
+            <div class="pb-icon pb-icon-amber"><i class="fa-solid fa-key"></i></div>
+            <h4 class="pb-title">Credential Hunt</h4>
+            <p class="pb-chain"><code>hashdump</code> → <code>lsadump</code> → <code>cachedump</code> → <code>hivelist</code> → <em>AI report</em></p>
+            <div class="pb-pills"><span class="pb-pill">5 steps</span><span class="pb-pill">~1 min</span></div>
+            <button class="pb-run" data-run="creds"><i class="fa-solid fa-play"></i> Run</button>
+            <div class="pb-status" data-status="creds"></div>
+          </article>
+
+          <article class="pb-card" data-playbook="network">
+            <div class="pb-icon pb-icon-indigo"><i class="fa-solid fa-network-wired"></i></div>
+            <h4 class="pb-title">Network Recon</h4>
+            <p class="pb-chain"><code>netscan</code> → <code>netstat</code> → <code>pslist</code> → <code>dlllist</code> → <em>MITRE map</em></p>
+            <div class="pb-pills"><span class="pb-pill">5 steps</span><span class="pb-pill">~2 min</span></div>
+            <button class="pb-run" data-run="network"><i class="fa-solid fa-play"></i> Run</button>
+            <div class="pb-status" data-status="network"></div>
+          </article>
+
+          <article class="pb-card" data-playbook="sweep">
+            <div class="pb-icon pb-icon-green"><i class="fa-solid fa-broom"></i></div>
+            <h4 class="pb-title">Full Sweep</h4>
+            <p class="pb-chain">All critical plugins → timeline → <em>AI executive report</em></p>
+            <div class="pb-pills"><span class="pb-pill">12 steps</span><span class="pb-pill">~5 min</span></div>
+            <button class="pb-run" data-run="sweep"><i class="fa-solid fa-play"></i> Run</button>
+            <div class="pb-status" data-status="sweep"></div>
+          </article>
+        </div>
+      </section>
+
+      <!-- ── Pipeline Builder ────────────────────────────────────── -->
+      <section class="auto-section">
+        <h3 class="auto-section-ttl"><i class="fa-solid fa-diagram-project" style="color:#6366f1"></i> Pipeline Builder</h3>
+        <div class="pl-canvas">
+          <div class="pl-track" id="pl-track">
+            <!-- nodes injected by JS -->
+          </div>
+          <div class="pl-actions">
+            <button class="ghost-btn" id="pl-add-step"><i class="fa-solid fa-plus"></i> Add Step</button>
+            <button class="cta-main pl-execute" id="pl-execute"><i class="fa-solid fa-rocket"></i> Execute Pipeline</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── Execution History ───────────────────────────────────── -->
+      <section class="auto-section">
+        <h3 class="auto-section-ttl"><i class="fa-solid fa-clock-rotate-left" style="color:var(--green)"></i> Execution History</h3>
+        <div id="exec-history" class="exec-history-empty">
+          <i class="fa-solid fa-inbox"></i>
+          <div>No workflows have been executed yet</div>
+        </div>
+      </section>
+    </div>
+
+    <!-- EXTRACTOR -->
+    <div class="scene" id="scene-extractor">
+      <div class="scene-hd" style="margin-bottom:20px;align-items:center">
+        <div>
+          <h2 class="sh-ttl">File Extractor</h2>
+          <span class="sh-ey" style="margin-top:6px;color:var(--t2);font-weight:normal;letter-spacing:.05em;text-transform:none">Browse memory-resident files and extract artifacts</span>
+        </div>
+        <div style="display:flex;gap:12px">
+          <button class="ghost-btn" id="ext-refresh-btn"><i class="fa-solid fa-arrows-rotate"></i> Refresh</button>
+          <button class="cta-main" id="extract-selected-btn" onclick="extractSelected()" style="background:#6366f1;border-color:#6366f1" disabled><i class="fa-solid fa-file-export"></i> Extract Selected</button>
+        </div>
+      </div>
+
+      <div class="ext-split">
+        <div class="ext-tree-pane">
+          <div class="ext-tree-header" style="border-bottom:none;padding:16px 14px 8px 14px;background:var(--bg0)">
+            <div class="ext-search-bar" id="extSearchBar">
+              <i class="fa-solid fa-magnifying-glass ext-search-ic"></i>
+              <input type="text" id="extSearch" placeholder='Search — try "ext:exe", "is:high", "-path:windows", "size:>1M"' title="Smart filters: ext: name: path: flag: is:(high|exe|doc|image|archive) size:(>1M, <10K). Use - to negate. Quote for exact phrase."/>
+              <button class="ext-tree-act ext-search-clear" id="extSearchClear" title="Clear search" hidden>
+                <i class="fa-solid fa-xmark"></i>
+              </button>
+              <span id="extSearchCount">0 files</span>
+              <span class="ext-search-sep"></span>
+              <button class="ext-tree-act" id="ext-expand-all" title="Expand all directories">
+                <i class="fa-solid fa-angles-down"></i>
+              </button>
+              <button class="ext-tree-act" id="ext-collapse-all" title="Collapse all directories">
+                <i class="fa-solid fa-angles-up"></i>
+              </button>
+            </div>
+            <div style="margin-top:14px;font-family:var(--fm);font-size:.65rem;color:var(--t3);letter-spacing:.05em" id="treeIndexed">
+              No image scanned yet — click <b>Refresh</b> after loading an image.
+            </div>
+          </div>
+          <div class="ext-tree-body" id="extTreeBody"></div>
+        </div>
+
+        <div class="ext-detail-pane" id="extDetailPane">
+          <div class="ext-tabs">
+            <button class="ext-tab active" onclick="switchTab(this,'metadata')">Metadata</button>
+            <button class="ext-tab" onclick="switchTab(this,'hex')">Hex View</button>
+            <button class="ext-tab" onclick="switchTab(this,'strings')">Strings</button>
+            <button class="ext-tab" onclick="switchTab(this,'exif')">Exif</button>
+            <button class="ext-tab"  id="ext-tab-image" onclick="switchTab(this,'image')" disabled>Image</button>
+          </div>
+          <div class="ext-empty" id="extEmpty">
+            <svg viewBox="0 0 48 56" fill="none" stroke="currentColor" stroke-width="1" width="52" height="52" opacity=".18"><path d="M28 2H8a2 2 0 00-2 2v48a2 2 0 002 2h32a2 2 0 002-2V16z"/><polyline points="28,2 28,16 40,16"/><circle cx="32" cy="38" r="8"/><line x1="38" y1="44" x2="44" y2="50"/></svg>
+            <p>Select a file from the tree<br>to view details</p>
+          </div>
+          <div class="ext-tab-content" id="tab-metadata" style="display:none"><div class="meta-grid" id="metaGrid"></div></div>
+          <div class="ext-tab-content" id="tab-hex" style="display:none">
+            <div class="hex-toolbar">
+              <span class="hex-offset-lbl">OFFSET</span>
+              <span class="hex-bytes-lbl">00 01 02 03 04 05 06 07  08 09 0A 0B 0C 0D 0E 0F</span>
+              <span class="hex-ascii-lbl">ASCII</span>
+            </div>
+            <div class="hex-body" id="hexBody"></div>
+          </div>
+          <div class="ext-tab-content" id="tab-strings" style="display:none">
+            <div class="str-toolbar">
+              <span class="str-count" id="strCount">0 strings found</span>
+              <div class="str-filter-wrap">
+                <input type="text" id="strFilter" placeholder="Filter strings..." oninput="filterStrings(this.value)" class="str-filter-input"/>
+              </div>
+            </div>
+            <div class="str-body" id="strBody"></div>
+          </div>
+          <div class="ext-tab-content" id="tab-exif" style="display:none">
+            <div class="exif-toolbar">
+              <span class="exif-count" id="exifCount">0 fields</span>
+              <div class="str-filter-wrap">
+                <input type="text" id="exifFilter" placeholder="Filter exif…" oninput="filterExif(this.value)" class="str-filter-input"/>
+              </div>
+            </div>
+            <div class="exif-body" id="exifBody"></div>
+          </div>
+          <div class="ext-tab-content" id="tab-image" style="display:none">
+            <div class="img-frame" id="imgFrame">
+              <div class="img-empty" id="imgEmpty">No image preview available for this file.</div>
+              <img id="imgView" alt="" style="display:none"/>
+              <div class="img-meta" id="imgMeta"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- AI AGENT -->
+    <div class="scene" id="scene-ai">
+      <div class="scene-hd">
+        <div><span class="sh-ey">AI ASSISTANT · TOOL-USE ENABLED</span><h2 class="sh-ttl">AI Agent</h2></div>
+        <div class="ai-pill"><span class="aip-dot"></span><span id="ai-provider-pill">M3MX-LLM · Online</span></div>
+      </div>
+      <div class="ai-layout">
+        <div class="ai-chat-pane">
+          <div class="chat-feed" id="chatFeed">
+            <div class="cf-row bot">
+              <div class="cf-av bot-av"><svg viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" width="13"><circle cx="9" cy="9" r="7"/><circle cx="9" cy="9" r="3" fill="currentColor" opacity="0.35"/></svg></div>
+              <div class="cf-bbl">Hi — I'm m3mx, your DFIR analyst. I can run Volatility plugins, search OSINT, scan with YARA, and write reports on demand. Drop a memory image and ask away.<span class="cf-ts">Now</span></div>
+            </div>
+          </div>
+          <div class="chat-chips">
+            <button class="chip" onclick="chipSend(this)">Suspicious processes?</button>
+            <button class="chip" onclick="chipSend(this)">External network connections</button>
+            <button class="chip" onclick="chipSend(this)">Malware injection signatures</button>
+            <button class="chip" onclick="chipSend(this)">Hidden processes</button>
+          </div>
+          <div class="chat-bar">
+            <input class="cb-in" id="cbInput" placeholder="Ask the agent..." onkeydown="cbKey(event)"/>
+            <button class="cb-send" onclick="sendMsg()"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" width="13"><line x1="14" y1="2" x2="7" y2="9"/><polygon points="14,2 9,15 7,9 1,7"/></svg></button>
+          </div>
+        </div>
+        <div class="ai-info-pane">
+          <div class="aip-sec">
+            <div class="aip-lbl">APPROVED TOOLS</div>
+            <div class="aip-tools" id="aip-tools-list">
+              <div class="apt"><span class="apt-d on"></span>run_volatility</div>
+              <div class="apt"><span class="apt-d on"></span>run_shell</div>
+              <div class="apt"><span class="apt-d on"></span>read_file</div>
+              <div class="apt"><span class="apt-d on"></span>web_search</div>
+              <div class="apt"><span class="apt-d on"></span>threat_intel</div>
+              <div class="apt"><span class="apt-d on"></span>yara_scan</div>
+              <div class="apt"><span class="apt-d on"></span>generate_report</div>
+            </div>
+          </div>
+          <div class="aip-sec">
+            <div class="aip-lbl">SESSION</div>
+            <div class="aip-ctx">
+              <div class="ctx-r"><span>Image</span><span id="aiImg">None</span></div>
+              <div class="ctx-r"><span>Profile</span><span id="aiProfile">Auto</span></div>
+              <div class="ctx-r"><span>Provider</span><span id="aiProviderName">—</span></div>
+              <div class="ctx-r"><span>Model</span><span id="aiModelName">—</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SETTINGS -->
+    <div class="scene" id="scene-settings">
+      <div class="scene-hd">
+        <div><span class="sh-ey">PLATFORM CONFIG</span><h2 class="sh-ttl">Settings</h2></div>
+        <button class="cta-main sm" id="save-settings-btn" onclick="saveSettings()">Save Changes</button>
+      </div>
+      <div class="settings-grid">
+
+        <div class="sg-b">
+          <div class="sg-lbl">Volatility Engine</div>
+          <div class="sg-rows">
+            <div class="sg-r"><label>Vol3 path</label><input class="mono-input" id="vol3-path" placeholder="/home/kali/.local/bin/vol"/></div>
+            <div class="sg-r"><label>Vol2 path</label><input class="mono-input" id="vol2-path" placeholder="/home/kali/.local/bin/vol2"/></div>
+            <div class="sg-r"><label>Preference</label><select class="mono-input" id="vol-preference"><option value="auto">Auto (v3 → v2 fallback)</option><option value="v3">Volatility 3 only</option><option value="v2">Volatility 2 only</option></select></div>
+            <div class="sg-r"><label>Timeout (s)</label><input class="mono-input" id="vol-timeout" type="number" value="600"/></div>
+          </div>
+        </div>
+
+        <div class="sg-b">
+          <div class="sg-lbl">Output</div>
+          <div class="sg-rows">
+            <div class="sg-r"><label>Directory</label><input class="mono-input" id="output-directory" value="/home/kali/M3MX.tool/m3mx-tool/outputs"/></div>
+            <div class="sg-r tog">
+              <label>Auto-save</label>
+              <div class="tog on" id="output-autosave" onclick="this.classList.toggle('on')"><span></span></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="sg-b">
+          <div class="sg-lbl">AI Agent</div>
+          <div class="sg-rows">
+            <div class="sg-r"><label>Provider</label>
+              <select class="mono-input" id="ai-provider">
+                <option value="openai">OpenAI</option>
+                <option value="anthropic">Anthropic</option>
+                <option value="google">Google Gemini</option>
+                <option value="glm">ZhipuAI GLM</option>
+                <option value="agentrouter">agentrouter.org</option>
+                <option value="ollama">Ollama (Local)</option>
+              </select>
+            </div>
+            <div class="sg-r"><label>Model</label><input class="mono-input" id="ai-model" placeholder="e.g. gemini-2.5-flash"/></div>
+            <div class="sg-r"><label>API Key</label><input class="mono-input" id="ai-api-key" type="password" placeholder="sk-…  (leave blank to keep stored)"/></div>
+            <div class="sg-r"><label>Base URL</label><input class="mono-input" id="ai-base-url" placeholder="provider-specific (auto)"/></div>
+            <div class="sg-r"><label>Max tokens</label><input class="mono-input" id="ai-max-tokens" type="number" value="1500"/></div>
+            <div class="sg-r"><label>Temperature</label><input class="mono-input" id="ai-temperature" type="number" step="0.1" min="0" max="2" value="0.2"/></div>
+            <div class="sg-r tog">
+              <label>Allow shell tools</label>
+              <div class="tog on" id="ai-allow-shell" onclick="this.classList.toggle('on')"><span></span></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="sg-b">
+          <div class="sg-lbl">Threat Intel</div>
+          <div class="sg-rows">
+            <div class="sg-r"><label>AbuseIPDB key</label><input class="mono-input" id="key-abuseipdb" type="password" placeholder="leave blank to keep stored"/></div>
+            <div class="sg-r"><label>VirusTotal key</label><input class="mono-input" id="key-virustotal" type="password" placeholder="leave blank to keep stored"/></div>
+          </div>
+        </div>
+
+        <div class="sg-b">
+          <div class="sg-lbl">Full Analysis</div>
+          <div class="sg-rows">
+            <div class="sg-r tog">
+              <label>Optional AI Report <span class="tog-badge warn">⚠ AI</span></label>
+              <div class="tog" id="fa-optional-ai-report" onclick="this.classList.toggle('on')"><span></span></div>
+            </div>
+            <div class="sg-r tog">
+              <label>Legacy V1 fallback</label>
+              <div class="tog" id="fa-legacy-v1" onclick="this.classList.toggle('on')"><span></span></div>
+            </div>
+            <div class="sg-r tog">
+              <label>V2 pipeline (default)</label>
+              <div class="tog on" id="fa-v2-enabled" onclick="this.classList.toggle('on')"><span></span></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="sg-b">
+          <div class="sg-lbl">Interface</div>
+          <div class="sg-rows">
+            <div class="sg-r"><label>Theme</label><select class="mono-input" id="theme-select" onchange="setTheme(this.value)"><option value="dark">Dark — Obsidian</option><option value="light">Light — Sterile</option></select></div>
+            <div class="sg-r tog">
+              <label>Ambient particle field</label>
+              <div class="tog on" onclick="toggleParticles(this)"><span></span></div>
+            </div>
+            <div class="sg-r tog">
+              <label>Film-grain overlay</label>
+              <div class="tog" onclick="toggleGrain(this)"><span></span></div>
+            </div>
+            <div class="sg-r tog">
+              <label>Interface animations</label>
+              <div class="tog on" onclick="this.classList.toggle('on')"><span></span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<div id="toasts"></div>
+<script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>

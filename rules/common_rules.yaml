@@ -1,0 +1,182 @@
+# m3mx tool — Full Analysis V2 detection rules (OS-neutral)
+#
+# Every rule must satisfy CONTRACT.md §12:
+#   id, title, description, applies_to, artifact_type, match,
+#   base_score, confidence, category, MITRE-with-reason,
+#   false_positive_notes, recommended_validation, enabled.
+#
+# `modifiers.apply: <name>` opts the rule into baseline-driven *demotion*.
+# Currently supported demotion triggers:
+#   - known_benign_browser_https    (process_name is a browser + remote_port 80/443/8080/8443)
+#   - private_ip_only               (remote_ip is in baseline.private_networks)
+#   - allowlisted_path_or_process   (path/name resolves to a baseline allowlist entry)
+
+rules:
+
+  # -----------------------------------------------------------------------
+  - id: common.public_outbound_non_browser
+    title: External network connection
+    description: |
+      A process is connected to a public IP address. This is routine for
+      browsers, OS updaters, and telemetry; it becomes interesting only
+      when correlated with suspicious execution, persistence, or
+      injection.
+    applies_to: [windows, linux, mac]
+    artifact_type: network_connection
+    match:
+      field_in:
+        state: [ESTABLISHED, SYN_SENT]
+      field_nonempty: [remote_ip]
+    base_score: 4              # low → medium ceiling; corroboration (Phase 6) lifts it
+    confidence: 0.55
+    category: network
+    mitre:
+      - technique: T1071
+        name: Application Layer Protocol
+        tactic: Command and Control
+        reason: |
+          External network traffic is the carrier for many C2 channels but
+          is not C2 by itself; this rule flags only the candidate. C2
+          attribution requires correlation with other suspicious signals.
+        confidence: 0.35
+    false_positive_notes: |
+      Almost every machine has long-running outbound connections from
+      browsers, OS update services, cloud sync clients, NTP, telemetry,
+      and EDR agents. Do not escalate without correlated suspicious
+      execution / persistence / injection on the same PID.
+    recommended_validation: |
+      1. Resolve the remote IP (passive DNS / threat-intel feeds).
+      2. Inspect the owning process: cmdline, parent, image path.
+      3. Check for malfind / unlinked DLLs / suspect cmdline on the same PID.
+    enabled: true
+    modifiers:
+      - apply: known_benign_browser_https
+      - apply: private_ip_only
+
+  # -----------------------------------------------------------------------
+  - id: common.temp_execution
+    title: Process executing from a temp / drop-zone path
+    description: |
+      A process is running from a user-writable directory commonly used
+      as a staging area for droppers (e.g. %TEMP%, /tmp, /dev/shm).
+      Indicator only — many legitimate installers and updaters spawn
+      from temp too.
+    applies_to: [windows, linux, mac]
+    artifact_type: process
+    match:
+      field_nonempty: [path]
+      any_field_regex:
+        - '(?i)\\(?:Windows\\)?Temp\\'
+        - '(?i)\\AppData\\Local\\Temp\\'
+        - '(?i)\\Users\\Public\\'
+        - '^/tmp/'
+        - '^/var/tmp/'
+        - '^/dev/shm/'
+        - '^/run/shm/'
+        - '^/private/tmp/'
+    base_score: 5              # medium ceiling — single weak signal
+    confidence: 0.55
+    category: process
+    mitre:
+      - technique: T1059
+        name: Command and Scripting Interpreter
+        tactic: Execution
+        reason: |
+          Execution from a temp / drop-zone path is consistent with
+          interpreter-driven loaders or installer payloads. Confirm by
+          inspecting the binary and parent process before attribution.
+        confidence: 0.4
+    false_positive_notes: |
+      Installers (setup.exe, *Update*, *Squirrel*), package managers,
+      and many vendor agents legitimately execute from temp dirs. Do
+      not escalate without a suspect parent, cmdline, or network leg.
+    recommended_validation: |
+      1. Inspect the binary's signature, hash, and reputation.
+      2. Look up the parent process — installers typically have explorer.exe
+         or a known package manager as parent.
+      3. Check for outbound network activity on the same PID.
+    enabled: true
+    modifiers:
+      - apply: allowlisted_path_or_process
+
+  # -----------------------------------------------------------------------
+  - id: common.download_and_execute
+    title: Command line indicates download-and-execute pattern
+    description: |
+      The process command line combines a network downloader (curl, wget,
+      Invoke-WebRequest) with an inline execution step (`| sh`, `| bash`,
+      `iex (...)`). Strong indicator of a one-liner loader.
+    applies_to: [windows, linux, mac]
+    artifact_type: process
+    match:
+      field_regex:
+        cmdline: '(?i)(?:curl|wget|Invoke-WebRequest|iwr|certutil|bitsadmin)\b[^|]*\|[\s\S]*?\b(?:sh|bash|zsh|iex|Invoke-Expression|powershell)\b'
+    base_score: 11             # high — strong standalone pattern; rare in benign code
+    confidence: 0.85
+    category: process
+    mitre:
+      - technique: T1105
+        name: Ingress Tool Transfer
+        tactic: Command and Control
+        reason: |
+          Combined download + inline execute is a textbook ingress tool
+          transfer — the binary is fetched and run in a single step.
+        confidence: 0.8
+      - technique: T1059
+        name: Command and Scripting Interpreter
+        tactic: Execution
+        reason: |
+          The trailing pipe target (`| sh`, `iex`) is a shell / interpreter
+          execution of the downloaded payload.
+        confidence: 0.8
+    false_positive_notes: |
+      System administrators occasionally invoke "curl | sh" interactively
+      to install benign tools. Inspect the URL and the user / parent
+      context before treating as an active intrusion.
+    recommended_validation: |
+      1. Capture the full cmdline and extract the URL.
+      2. Reverse-DNS the URL host; check reputation.
+      3. Look for the downloaded file on disk and inspect its content.
+    enabled: true
+
+  # -----------------------------------------------------------------------
+  - id: common.obfuscated_script_interpreter
+    title: Script interpreter invoked with obfuscation indicators
+    description: |
+      A scripting interpreter (PowerShell, bash, python, osascript) is
+      launched with a command line that carries common obfuscation tells:
+      Base64 blobs, long single-line strings, character-reverse tricks.
+    applies_to: [windows, linux, mac]
+    artifact_type: process
+    match:
+      field_regex:
+        cmdline: '(?i)(?:powershell|pwsh|bash|sh|python(?:3)?|perl|ruby|osascript)\b.{0,400}?(?:[A-Za-z0-9+/=]{120,}|FromBase64String|-EncodedCommand|\\[char\\]\\d|String\\.fromCharCode|chr\\(\\d+\\))'
+    base_score: 9              # high (but not critical without corroboration)
+    confidence: 0.75
+    category: process
+    mitre:
+      - technique: T1027
+        name: Obfuscated Files or Information
+        tactic: Defense Evasion
+        reason: |
+          The cmdline carries an obfuscation construct (Base64 blob,
+          character-arithmetic, or encoded-command flag) consistent with
+          payload concealment.
+        confidence: 0.75
+      - technique: T1059
+        name: Command and Scripting Interpreter
+        tactic: Execution
+        reason: |
+          The obfuscated argument is being executed by an interpreter,
+          mapping to the generic interpreter-execution technique.
+        confidence: 0.75
+    false_positive_notes: |
+      Some legitimate deployment scripts pack large Base64 payloads
+      (config blobs, certificates, certutil prerequisites). Inspect the
+      decoded content before final attribution.
+    recommended_validation: |
+      1. Extract the suspect argument and decode (Base64 / character math).
+      2. Look at the parent process — interactive shells and admin tools
+         are common context for legitimate use.
+      3. Correlate with outbound connections on the same PID.
+    enabled: true

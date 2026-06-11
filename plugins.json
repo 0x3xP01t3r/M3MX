@@ -1,0 +1,1316 @@
+{
+  "categories": [
+    {
+      "name": "Processes",
+      "icon": "proc",
+      "plugins": [
+        {
+          "name": "pslist",
+          "vol3": "windows.pslist.PsList",
+          "vol2": "pslist",
+          "format": "csv",
+          "desc": "List running processes via the EPROCESS doubly-linked list."
+        },
+        {
+          "name": "pstree",
+          "vol3": "windows.pstree.PsTree",
+          "vol2": "pstree",
+          "format": "csv",
+          "desc": "Process tree with parent/child relationships."
+        },
+        {
+          "name": "psscan",
+          "vol3": "windows.psscan.PsScan",
+          "vol2": "psscan",
+          "format": "csv",
+          "desc": "Scan for hidden/terminated processes via pool tags."
+        },
+        {
+          "name": "psxview",
+          "vol3": "windows.psxview.PsXView",
+          "vol2": "psxview",
+          "format": "csv",
+          "desc": "Cross-reference process listings to spot hidden processes."
+        },
+        {
+          "name": "cmdline",
+          "vol3": "windows.cmdline.CmdLine",
+          "vol2": "cmdline",
+          "format": "csv",
+          "desc": "Command-line arguments for every process."
+        },
+        {
+          "name": "dlllist",
+          "vol3": "windows.dlllist.DllList",
+          "vol2": "dlllist",
+          "format": "csv",
+          "desc": "Loaded DLLs per process."
+        },
+        {
+          "name": "handles",
+          "vol3": "windows.handles.Handles",
+          "vol2": "handles",
+          "format": "csv",
+          "desc": "Open handles per process (files, keys, tokens)."
+        },
+        {
+          "name": "getsids",
+          "vol3": "windows.getsids.GetSIDs",
+          "vol2": "getsids",
+          "format": "csv",
+          "desc": "SIDs owning each process."
+        },
+        {
+          "name": "privs",
+          "vol3": "windows.privileges.Privs",
+          "vol2": "privs",
+          "format": "csv",
+          "desc": "Process privileges (enabled/disabled)."
+        },
+        {
+          "name": "envars",
+          "vol3": "windows.envars.Envars",
+          "vol2": "envars",
+          "format": "csv",
+          "desc": "Environment variables per process."
+        },
+        {
+          "name": "joblinks",
+          "vol3": "windows.joblinks.JobLinks",
+          "vol2": null,
+          "format": "csv",
+          "desc": "Enumerate job objects and linked processes."
+        },
+        {
+          "name": "thrdscan",
+          "vol3": "windows.thrdscan.ThrdScan",
+          "vol2": "thrdscan",
+          "format": "csv",
+          "desc": "Scan for ETHREAD structures."
+        },
+        {
+          "name": "threads",
+          "vol3": "windows.threads.Threads",
+          "vol2": "threads",
+          "format": "csv",
+          "desc": "Enumerate process threads."
+        },
+        {
+          "name": "driverirp",
+          "vol3": "windows.driverirp.DriverIrp",
+          "vol2": "driverirp",
+          "format": "text",
+          "desc": "IRP function hooks in driver tables."
+        },
+        {
+          "name": "sessions",
+          "vol3": "windows.sessions.Sessions",
+          "vol2": "sessions",
+          "format": "csv",
+          "desc": "Active user sessions."
+        },
+        {
+          "name": "desktops",
+          "vol3": "windows.desktops.Desktops",
+          "vol2": null,
+          "format": "csv",
+          "desc": "Open desktops within window stations."
+        },
+        {
+          "name": "deskscan",
+          "vol3": "windows.deskscan.DeskScan",
+          "vol2": null,
+          "format": "csv",
+          "desc": "Scan for desktop (DESKTOP) kernel structures."
+        },
+        {
+          "name": "windowstations",
+          "vol3": "windows.windowstations.WindowStations",
+          "vol2": null,
+          "format": "csv",
+          "desc": "Enumerate window stations."
+        },
+        {
+          "name": "windows",
+          "vol3": "windows.windows.Windows",
+          "vol2": null,
+          "format": "csv",
+          "desc": "Enumerate top-level windows."
+        }
+      ]
+    },
+    {
+      "name": "Memory",
+      "icon": "mem",
+      "plugins": [
+        {
+          "name": "memmap",
+          "vol3": "windows.memmap.Memmap",
+          "vol2": "memmap",
+          "format": "csv",
+          "desc": "Virtual to physical memory map for a process."
+        },
+        {
+          "name": "memdump",
+          "vol3": null,
+          "vol2": "memdump",
+          "format": "text",
+          "desc": "Dump the addressable memory of a process."
+        },
+        {
+          "name": "vadinfo",
+          "vol3": "windows.vadinfo.VadInfo",
+          "vol2": "vadinfo",
+          "format": "csv",
+          "desc": "VAD tree info per process."
+        },
+        {
+          "name": "vaddump",
+          "vol3": "windows.vadinfo.VadInfo",
+          "vol2": "vaddump",
+          "format": "text",
+          "desc": "Dump Virtual Address Descriptor regions."
+        },
+        {
+          "name": "vadtree",
+          "vol3": null,
+          "vol2": "vadtree",
+          "format": "text",
+          "desc": "VAD rendered as an ASCII tree."
+        },
+        {
+          "name": "vadwalk",
+          "vol3": "windows.vadwalk.VadWalk",
+          "vol2": "vadwalk",
+          "format": "text",
+          "desc": "Walk the VAD tree."
+        },
+        {
+          "name": "vadregexscan",
+          "vol3": "windows.vadregexscan.VadRegExScan",
+          "vol2": null,
+          "format": "csv",
+          "desc": "RegEx scan across every VAD."
+        },
+        {
+          "name": "vadyarascan",
+          "vol3": "windows.vadyarascan.VadYaraScan",
+          "vol2": null,
+          "format": "text",
+          "desc": "YARA scan across every VAD."
+        },
+        {
+          "name": "bigpools",
+          "vol3": "windows.bigpools.BigPools",
+          "vol2": null,
+          "format": "csv",
+          "desc": "Enumerate large pool allocations."
+        },
+        {
+          "name": "poolscanner",
+          "vol3": "windows.poolscanner.PoolScanner",
+          "vol2": null,
+          "format": "csv",
+          "desc": "Generic pool-tag scanner."
+        },
+        {
+          "name": "unloadedmodules",
+          "vol3": "windows.unloadedmodules.UnloadedModules",
+          "vol2": null,
+          "format": "csv",
+          "desc": "List kernel modules that have been unloaded."
+        },
+        {
+          "name": "virtmap",
+          "vol3": "windows.virtmap.VirtMap",
+          "vol2": null,
+          "format": "csv",
+          "desc": "Virtual layer mapping dump."
+        },
+        {
+          "name": "pedump",
+          "vol3": "windows.pedump.PEDump",
+          "vol2": null,
+          "format": "text",
+          "desc": "Dump a process's on-disk PE image from memory."
+        },
+        {
+          "name": "pe_symbols",
+          "vol3": "windows.pe_symbols.PESymbols",
+          "vol2": null,
+          "format": "csv",
+          "desc": "Resolve symbols from loaded PEs."
+        },
+        {
+          "name": "strings",
+          "vol3": "windows.strings.Strings",
+          "vol2": null,
+          "format": "text",
+          "desc": "Extract printable strings with process/VA attribution."
+        }
+      ]
+    },
+    {
+      "name": "Network",
+      "icon": "net",
+      "plugins": [
+        {
+          "name": "netscan",
+          "vol3": "windows.netscan.NetScan",
+          "vol2": "netscan",
+          "format": "csv",
+          "desc": "Scan for network sockets and connections."
+        },
+        {
+          "name": "netstat",
+          "vol3": "windows.netstat.NetStat",
+          "vol2": null,
+          "format": "csv",
+          "desc": "Walk active TCP/UDP endpoints (Vol3 only — use `netscan` for Vol2)."
+        },
+        {
+          "name": "connections",
+          "vol3": null,
+          "vol2": "connections",
+          "format": "csv",
+          "desc": "XP/2003 active TCP connections."
+        },
+        {
+          "name": "sockets",
+          "vol3": null,
+          "vol2": "sockets",
+          "format": "csv",
+          "desc": "XP/2003 open sockets."
+        },
+        {
+          "name": "connscan",
+          "vol3": null,
+          "vol2": "connscan",
+          "format": "csv",
+          "desc": "XP/2003 scan for connection structures."
+        }
+      ]
+    },
+    {
+      "name": "Registry",
+      "icon": "reg",
+      "plugins": [
+        {
+          "name": "hivelist",
+          "vol3": "windows.registry.hivelist.HiveList",
+          "vol2": "hivelist",
+          "format": "csv",
+          "desc": "Loaded registry hives."
+        },
+        {
+          "name": "hivescan",
+          "vol3": "windows.registry.hivescan.HiveScan",
+          "vol2": null,
+          "format": "csv",
+          "desc": "Scan for hive pool tags."
+        },
+        {
+          "name": "hivedump",
+          "vol3": null,
+          "vol2": "hivedump",
+          "format": "text",
+          "desc": "Dump a specific hive."
+        },
+        {
+          "name": "printkey",
+          "vol3": "windows.registry.printkey.PrintKey",
+          "vol2": "printkey",
+          "format": "csv",
+          "desc": "Print a registry key's values."
+        },
+        {
+          "name": "userassist",
+          "vol3": "windows.registry.userassist.UserAssist",
+          "vol2": "userassist",
+          "format": "csv",
+          "desc": "Programs launched by a user (UserAssist)."
+        },
+        {
+          "name": "shellbags",
+          "vol3": null,
+          "vol2": "shellbags",
+          "format": "csv",
+          "desc": "Folder access history from shellbags."
+        },
+        {
+          "name": "shimcache",
+          "vol3": null,
+          "vol2": "shimcache",
+          "format": "csv",
+          "desc": "Application compatibility shim cache."
+        },
+        {
+          "name": "shimcachemem",
+          "vol3": "windows.shimcachemem.ShimcacheMem",
+          "vol2": null,
+          "format": "csv",
+          "desc": "Shim cache reconstructed from memory."
+        },
+        {
+          "name": "amcache",
+          "vol3": "windows.registry.amcache.Amcache",
+          "vol2": "amcache",
+          "format": "csv",
+          "desc": "Amcache.hve application execution records."
+        },
+        {
+          "name": "certificates",
+          "vol3": "windows.registry.certificates.Certificates",
+          "vol2": null,
+          "format": "csv",
+          "desc": "Certificates from Root/CA/My registry stores."
+        },
+        {
+          "name": "getcellroutine",
+          "vol3": "windows.registry.getcellroutine.GetCellRoutine",
+          "vol2": null,
+          "format": "text",
+          "desc": "GetCellRoutine function for registry hives."
+        },
+        {
+          "name": "scheduled_tasks",
+          "vol3": "windows.registry.scheduled_tasks.ScheduledTasks",
+          "vol2": null,
+          "format": "csv",
+          "desc": "Windows Scheduled Tasks from registry."
+        }
+      ]
+    },
+    {
+      "name": "Files",
+      "icon": "file",
+      "plugins": [
+        {
+          "name": "filescan",
+          "vol3": "windows.filescan.FileScan",
+          "vol2": "filescan",
+          "format": "csv",
+          "desc": "Scan for FILE_OBJECT structures in memory."
+        },
+        {
+          "name": "dumpfiles",
+          "vol3": "windows.dumpfiles.DumpFiles",
+          "vol2": "dumpfiles",
+          "format": "text",
+          "desc": "Extract cached files from memory."
+        },
+        {
+          "name": "mftscan",
+          "vol3": "windows.mftscan.MFTScan",
+          "vol2": "mftparser",
+          "format": "csv",
+          "desc": "Parse Master File Table entries."
+        },
+        {
+          "name": "ads",
+          "vol3": "windows.mftscan.ADS",
+          "vol2": null,
+          "format": "csv",
+          "desc": "Discover NTFS Alternate Data Streams in the MFT."
+        },
+        {
+          "name": "residentdata",
+          "vol3": "windows.mftscan.ResidentData",
+          "vol2": null,
+          "format": "csv",
+          "desc": "Dump resident data from MFT records."
+        },
+        {
+          "name": "usnjrnl",
+          "vol3": null,
+          "vol2": "usnjrnl",
+          "format": "csv",
+          "desc": "Parse USN journal entries."
+        },
+        {
+          "name": "symlinkscan",
+          "vol3": "windows.symlinkscan.SymlinkScan",
+          "vol2": null,
+          "format": "csv",
+          "desc": "Scan for symbolic link objects."
+        },
+        {
+          "name": "devicetree",
+          "vol3": "windows.devicetree.DeviceTree",
+          "vol2": null,
+          "format": "csv",
+          "desc": "Driver / device object hierarchy."
+        }
+      ]
+    },
+    {
+      "name": "Malware",
+      "icon": "malware",
+      "plugins": [
+        {
+          "name": "malfind",
+          "vol3": "windows.malfind.Malfind",
+          "vol2": "malfind",
+          "format": "text",
+          "desc": "Detect injected code (RWX pages, no image file)."
+        },
+        {
+          "name": "yarascan",
+          "vol3": "yarascan.YaraScan",
+          "vol2": "yarascan",
+          "format": "text",
+          "desc": "Scan memory with YARA rules."
+        },
+        {
+          "name": "hollowprocesses",
+          "vol3": "windows.hollowprocesses.HollowProcesses",
+          "vol2": null,
+          "format": "csv",
+          "desc": "Detect process hollowing indicators."
+        },
+        {
+          "name": "processghosting",
+          "vol3": "windows.processghosting.ProcessGhosting",
+          "vol2": null,
+          "format": "csv",
+          "desc": "Detect process ghosting."
+        },
+        {
+          "name": "pebmasquerade",
+          "vol3": "windows.malware.pebmasquerade.PebMasquerade",
+          "vol2": null,
+          "format": "csv",
+          "desc": "Detect PEB-image-path masquerading."
+        },
+        {
+          "name": "ldrmodules",
+          "vol3": "windows.ldrmodules.LdrModules",
+          "vol2": "ldrmodules",
+          "format": "csv",
+          "desc": "Compare loader-DLL views to reveal unlinked DLLs."
+        },
+        {
+          "name": "skeleton_key_check",
+          "vol3": "windows.skeleton_key_check.Skeleton_Key_Check",
+          "vol2": null,
+          "format": "csv",
+          "desc": "Detect the Skeleton Key LSASS patch (Vol3 only)."
+        },
+        {
+          "name": "direct_system_calls",
+          "vol3": "windows.direct_system_calls.DirectSystemCalls",
+          "vol2": null,
+          "format": "csv",
+          "desc": "Detect direct Windows syscalls (EDR evasion)."
+        },
+        {
+          "name": "indirect_system_calls",
+          "vol3": "windows.indirect_system_calls.IndirectSystemCalls",
+          "vol2": null,
+          "format": "csv",
+          "desc": "Detect indirect syscall trampolines."
+        },
+        {
+          "name": "unhooked_system_calls",
+          "vol3": "windows.unhooked_system_calls.unhooked_system_calls",
+          "vol2": null,
+          "format": "csv",
+          "desc": "Compare ntdll trampolines against disk image."
+        },
+        {
+          "name": "etwpatch",
+          "vol3": "windows.etwpatch.EtwPatch",
+          "vol2": null,
+          "format": "csv",
+          "desc": "Detect patches to ETW event providers."
+        },
+        {
+          "name": "iat",
+          "vol3": "windows.iat.IAT",
+          "vol2": null,
+          "format": "csv",
+          "desc": "Dump process Import Address Tables."
+        },
+        {
+          "name": "debugregisters",
+          "vol3": "windows.debugregisters.DebugRegisters",
+          "vol2": null,
+          "format": "csv",
+          "desc": "Inspect hardware debug registers for rogue hooks."
+        },
+        {
+          "name": "suspended_threads",
+          "vol3": "windows.suspended_threads.SuspendedThreads",
+          "vol2": null,
+          "format": "csv",
+          "desc": "Find suspended threads (possible injection staging)."
+        },
+        {
+          "name": "suspicious_threads",
+          "vol3": "windows.suspicious_threads.SuspiciousThreads",
+          "vol2": null,
+          "format": "csv",
+          "desc": "Find threads whose start address looks injected."
+        },
+        {
+          "name": "orphan_kernel_threads",
+          "vol3": "windows.orphan_kernel_threads.Threads",
+          "vol2": null,
+          "format": "csv",
+          "desc": "Kernel threads with no matching loaded module."
+        },
+        {
+          "name": "svcscan",
+          "vol3": "windows.svcscan.SvcScan",
+          "vol2": "svcscan",
+          "format": "csv",
+          "desc": "Enumerate Windows services."
+        },
+        {
+          "name": "svclist",
+          "vol3": "windows.svclist.SvcList",
+          "vol2": null,
+          "format": "csv",
+          "desc": "Linked list of active service records."
+        },
+        {
+          "name": "svcdiff",
+          "vol3": "windows.svcdiff.SvcDiff",
+          "vol2": null,
+          "format": "csv",
+          "desc": "Diff services between linked list and scans."
+        },
+        {
+          "name": "modules",
+          "vol3": "windows.modules.Modules",
+          "vol2": "modules",
+          "format": "csv",
+          "desc": "Kernel modules (PsLoadedModuleList)."
+        },
+        {
+          "name": "modscan",
+          "vol3": "windows.modscan.ModScan",
+          "vol2": "modscan",
+          "format": "csv",
+          "desc": "Scan for kernel module structures."
+        },
+        {
+          "name": "drivermodule",
+          "vol3": "windows.drivermodule.DriverModule",
+          "vol2": null,
+          "format": "csv",
+          "desc": "Pair driver objects with module entries."
+        },
+        {
+          "name": "driverscan",
+          "vol3": "windows.driverscan.DriverScan",
+          "vol2": "driverscan",
+          "format": "csv",
+          "desc": "Scan for driver objects."
+        },
+        {
+          "name": "ssdt",
+          "vol3": "windows.ssdt.SSDT",
+          "vol2": "ssdt",
+          "format": "csv",
+          "desc": "Dump the System Service Descriptor Table."
+        },
+        {
+          "name": "mutantscan",
+          "vol3": "windows.mutantscan.MutantScan",
+          "vol2": null,
+          "format": "csv",
+          "desc": "Scan for mutex / mutant objects (often used for IOC hits)."
+        },
+        {
+          "name": "callbacks",
+          "vol3": "windows.callbacks.Callbacks",
+          "vol2": "callbacks",
+          "format": "csv",
+          "desc": "Kernel callback routines."
+        },
+        {
+          "name": "timers",
+          "vol3": "windows.timers.Timers",
+          "vol2": "timers",
+          "format": "csv",
+          "desc": "Kernel timers."
+        },
+        {
+          "name": "apihooks",
+          "vol3": null,
+          "vol2": "apihooks",
+          "format": "csv",
+          "desc": "Detect user/kernel API hooks (Vol2)."
+        },
+        {
+          "name": "hollowfind",
+          "vol3": null,
+          "vol2": "hollowfind",
+          "format": "csv",
+          "desc": "Detect process hollowing (Vol2)."
+        },
+        {
+          "name": "verinfo",
+          "vol3": "windows.verinfo.VerInfo",
+          "vol2": null,
+          "format": "csv",
+          "desc": "Version information for loaded PE files."
+        },
+        {
+          "name": "mbrscan",
+          "vol3": "windows.mbrscan.MBRScan",
+          "vol2": null,
+          "format": "csv",
+          "desc": "Scan for MBR structures in memory."
+        }
+      ]
+    },
+    {
+      "name": "Credentials",
+      "icon": "creds",
+      "plugins": [
+        {
+          "name": "hashdump",
+          "vol3": "windows.hashdump.Hashdump",
+          "vol2": "hashdump",
+          "format": "csv",
+          "desc": "Extract NTLM password hashes."
+        },
+        {
+          "name": "lsadump",
+          "vol3": "windows.lsadump.Lsadump",
+          "vol2": "lsadump",
+          "format": "csv",
+          "desc": "Dump LSA secrets."
+        },
+        {
+          "name": "cachedump",
+          "vol3": "windows.cachedump.Cachedump",
+          "vol2": "cachedump",
+          "format": "csv",
+          "desc": "Dump cached domain credential hashes (MSCASH)."
+        },
+        {
+          "name": "mimikatz",
+          "vol3": null,
+          "vol2": "mimikatz",
+          "format": "text",
+          "desc": "Extract secrets / tickets (Vol2 mimikatz plugin)."
+        },
+        {
+          "name": "truecrypt",
+          "vol3": "windows.truecrypt.Passphrase",
+          "vol2": null,
+          "format": "text",
+          "desc": "Recover TrueCrypt passphrases from memory."
+        }
+      ]
+    },
+    {
+      "name": "System",
+      "icon": "system",
+      "plugins": [
+        {
+          "name": "info",
+          "vol3": "windows.info.Info",
+          "vol2": null,
+          "format": "csv",
+          "desc": "Show OS & kernel details of the memory sample."
+        },
+        {
+          "name": "imageinfo",
+          "vol3": null,
+          "vol2": "imageinfo",
+          "format": "text",
+          "desc": "Detect OS, version, KDBG (auto-run on load \u2014 Vol2)."
+        },
+        {
+          "name": "kdbgscan",
+          "vol3": null,
+          "vol2": "kdbgscan",
+          "format": "text",
+          "desc": "Scan for KDBG structures (profile hunt \u2014 Vol2)."
+        },
+        {
+          "name": "systeminfo",
+          "vol3": "windows.info.Info",
+          "vol2": null,
+          "format": "text",
+          "desc": "System build info (kernel base, etc.)."
+        },
+        {
+          "name": "kpcrs",
+          "vol3": "windows.kpcrs.KPCRs",
+          "vol2": null,
+          "format": "csv",
+          "desc": "Kernel Processor Control Region blocks."
+        },
+        {
+          "name": "statistics",
+          "vol3": "windows.statistics.Statistics",
+          "vol2": null,
+          "format": "csv",
+          "desc": "High-level layer/symbol statistics of the image."
+        },
+        {
+          "name": "crashinfo",
+          "vol3": "windows.crashinfo.Crashinfo",
+          "vol2": null,
+          "format": "csv",
+          "desc": "Windows crash-dump metadata."
+        },
+        {
+          "name": "shutdowntime",
+          "vol3": null,
+          "vol2": "shutdowntime",
+          "format": "text",
+          "desc": "Last clean-shutdown timestamp (Vol2)."
+        },
+        {
+          "name": "clipboard",
+          "vol3": null,
+          "vol2": "clipboard",
+          "format": "text",
+          "desc": "Clipboard contents."
+        },
+        {
+          "name": "screenshot",
+          "vol3": null,
+          "vol2": "screenshot",
+          "format": "text",
+          "desc": "Reconstruct desktop screenshots (Vol2)."
+        },
+        {
+          "name": "getservicesids",
+          "vol3": "windows.getservicesids.GetServiceSIDs",
+          "vol2": null,
+          "format": "csv",
+          "desc": "Service SIDs from registry."
+        }
+      ]
+    },
+    {
+      "name": "Shell",
+      "icon": "misc",
+      "plugins": [
+        {
+          "name": "cmdscan",
+          "vol3": "windows.cmdscan.CmdScan",
+          "vol2": "cmdscan",
+          "format": "text",
+          "desc": "Recover cmd.exe command history."
+        },
+        {
+          "name": "consoles",
+          "vol3": "windows.consoles.Consoles",
+          "vol2": "consoles",
+          "format": "text",
+          "desc": "Recover full console buffers."
+        }
+      ]
+    },
+    {
+      "name": "Linux",
+      "icon": "linux",
+      "plugins": [
+        {
+          "name": "linux_pslist",
+          "vol3": "linux.pslist.PsList",
+          "vol2": null,
+          "format": "csv",
+          "desc": "Linux plugin: pslist.PsList."
+        },
+        {
+          "name": "linux_psscan",
+          "vol3": "linux.psscan.PsScan",
+          "vol2": null,
+          "format": "csv",
+          "desc": "Linux plugin: psscan.PsScan."
+        },
+        {
+          "name": "linux_pstree",
+          "vol3": "linux.pstree.PsTree",
+          "vol2": null,
+          "format": "csv",
+          "desc": "Linux plugin: pstree.PsTree."
+        },
+        {
+          "name": "linux_psaux",
+          "vol3": "linux.psaux.PsAux",
+          "vol2": null,
+          "format": "csv",
+          "desc": "Linux plugin: psaux.PsAux."
+        },
+        {
+          "name": "linux_pscallstack",
+          "vol3": "linux.pscallstack.PsCallStack",
+          "vol2": null,
+          "format": "csv",
+          "desc": "Linux plugin: pscallstack.PsCallStack."
+        },
+        {
+          "name": "linux_bash",
+          "vol3": "linux.bash.Bash",
+          "vol2": null,
+          "format": "csv",
+          "desc": "Linux plugin: bash.Bash."
+        },
+        {
+          "name": "linux_boottime",
+          "vol3": "linux.boottime.Boottime",
+          "vol2": null,
+          "format": "csv",
+          "desc": "Linux plugin: boottime.Boottime."
+        },
+        {
+          "name": "linux_capabilities",
+          "vol3": "linux.capabilities.Capabilities",
+          "vol2": null,
+          "format": "csv",
+          "desc": "Linux plugin: capabilities.Capabilities."
+        },
+        {
+          "name": "linux_check_afinfo",
+          "vol3": "linux.check_afinfo.Check_afinfo",
+          "vol2": null,
+          "format": "csv",
+          "desc": "Linux plugin: check_afinfo.Check_afinfo."
+        },
+        {
+          "name": "linux_check_creds",
+          "vol3": "linux.check_creds.Check_creds",
+          "vol2": null,
+          "format": "csv",
+          "desc": "Linux plugin: check_creds.Check_creds."
+        },
+        {
+          "name": "linux_check_idt",
+          "vol3": "linux.check_idt.Check_idt",
+          "vol2": null,
+          "format": "csv",
+          "desc": "Linux plugin: check_idt.Check_idt."
+        },
+        {
+          "name": "linux_check_modules",
+          "vol3": "linux.check_modules.Check_modules",
+          "vol2": null,
+          "format": "csv",
+          "desc": "Linux plugin: check_modules.Check_modules."
+        },
+        {
+          "name": "linux_check_syscall",
+          "vol3": "linux.check_syscall.Check_syscall",
+          "vol2": null,
+          "format": "csv",
+          "desc": "Linux plugin: check_syscall.Check_syscall."
+        },
+        {
+          "name": "linux_ebpf",
+          "vol3": "linux.ebpf.EBPF",
+          "vol2": null,
+          "format": "csv",
+          "desc": "Linux plugin: ebpf.EBPF."
+        },
+        {
+          "name": "linux_elfs",
+          "vol3": "linux.elfs.Elfs",
+          "vol2": null,
+          "format": "csv",
+          "desc": "Linux plugin: elfs.Elfs."
+        },
+        {
+          "name": "linux_envars",
+          "vol3": "linux.envars.Envars",
+          "vol2": null,
+          "format": "csv",
+          "desc": "Linux plugin: envars.Envars."
+        },
+        {
+          "name": "linux_fbdev",
+          "vol3": "linux.graphics.fbdev.Fbdev",
+          "vol2": null,
+          "format": "csv",
+          "desc": "Linux plugin: graphics.fbdev.Fbdev."
+        },
+        {
+          "name": "linux_hidden_modules",
+          "vol3": "linux.hidden_modules.Hidden_modules",
+          "vol2": null,
+          "format": "csv",
+          "desc": "Linux plugin: hidden_modules.Hidden_modules."
+        },
+        {
+          "name": "linux_iomem",
+          "vol3": "linux.iomem.IOMem",
+          "vol2": null,
+          "format": "csv",
+          "desc": "Linux plugin: iomem.IOMem."
+        },
+        {
+          "name": "linux_ip_addr",
+          "vol3": "linux.ip.Addr",
+          "vol2": null,
+          "format": "csv",
+          "desc": "Linux plugin: ip.Addr."
+        },
+        {
+          "name": "linux_ip_link",
+          "vol3": "linux.ip.Link",
+          "vol2": null,
+          "format": "csv",
+          "desc": "Linux plugin: ip.Link."
+        },
+        {
+          "name": "linux_kallsyms",
+          "vol3": "linux.kallsyms.Kallsyms",
+          "vol2": null,
+          "format": "csv",
+          "desc": "Linux plugin: kallsyms.Kallsyms."
+        },
+        {
+          "name": "linux_keyboard_notifiers",
+          "vol3": "linux.keyboard_notifiers.Keyboard_notifiers",
+          "vol2": null,
+          "format": "csv",
+          "desc": "Linux plugin: keyboard_notifiers.Keyboard_notifiers."
+        },
+        {
+          "name": "linux_kmsg",
+          "vol3": "linux.kmsg.Kmsg",
+          "vol2": null,
+          "format": "text",
+          "desc": "Linux plugin: kmsg.Kmsg."
+        },
+        {
+          "name": "linux_kthreads",
+          "vol3": "linux.kthreads.Kthreads",
+          "vol2": null,
+          "format": "csv",
+          "desc": "Linux plugin: kthreads.Kthreads."
+        },
+        {
+          "name": "linux_library_list",
+          "vol3": "linux.library_list.LibraryList",
+          "vol2": null,
+          "format": "csv",
+          "desc": "Linux plugin: library_list.LibraryList."
+        },
+        {
+          "name": "linux_lsmod",
+          "vol3": "linux.lsmod.Lsmod",
+          "vol2": null,
+          "format": "csv",
+          "desc": "Linux plugin: lsmod.Lsmod."
+        },
+        {
+          "name": "linux_lsof",
+          "vol3": "linux.lsof.Lsof",
+          "vol2": null,
+          "format": "csv",
+          "desc": "Linux plugin: lsof.Lsof."
+        },
+        {
+          "name": "linux_malfind",
+          "vol3": "linux.malfind.Malfind",
+          "vol2": null,
+          "format": "text",
+          "desc": "Linux plugin: malfind.Malfind."
+        },
+        {
+          "name": "linux_module_extract",
+          "vol3": "linux.module_extract.ModuleExtract",
+          "vol2": null,
+          "format": "text",
+          "desc": "Linux plugin: module_extract.ModuleExtract."
+        },
+        {
+          "name": "linux_modxview",
+          "vol3": "linux.modxview.Modxview",
+          "vol2": null,
+          "format": "csv",
+          "desc": "Linux plugin: modxview.Modxview."
+        },
+        {
+          "name": "linux_mountinfo",
+          "vol3": "linux.mountinfo.MountInfo",
+          "vol2": null,
+          "format": "csv",
+          "desc": "Linux plugin: mountinfo.MountInfo."
+        },
+        {
+          "name": "linux_netfilter",
+          "vol3": "linux.netfilter.Netfilter",
+          "vol2": null,
+          "format": "csv",
+          "desc": "Linux plugin: netfilter.Netfilter."
+        },
+        {
+          "name": "linux_pagecache_files",
+          "vol3": "linux.pagecache.Files",
+          "vol2": null,
+          "format": "csv",
+          "desc": "Linux plugin: pagecache.Files."
+        },
+        {
+          "name": "linux_pagecache_inodes",
+          "vol3": "linux.pagecache.InodePages",
+          "vol2": null,
+          "format": "csv",
+          "desc": "Linux plugin: pagecache.InodePages."
+        },
+        {
+          "name": "linux_pagecache_recoverfs",
+          "vol3": "linux.pagecache.RecoverFs",
+          "vol2": null,
+          "format": "text",
+          "desc": "Linux plugin: pagecache.RecoverFs."
+        },
+        {
+          "name": "linux_pidhashtable",
+          "vol3": "linux.pidhashtable.PIDHashTable",
+          "vol2": null,
+          "format": "csv",
+          "desc": "Linux plugin: pidhashtable.PIDHashTable."
+        },
+        {
+          "name": "linux_proc_maps",
+          "vol3": "linux.proc.Maps",
+          "vol2": null,
+          "format": "csv",
+          "desc": "Linux plugin: proc.Maps."
+        },
+        {
+          "name": "linux_ptrace",
+          "vol3": "linux.ptrace.Ptrace",
+          "vol2": null,
+          "format": "csv",
+          "desc": "Linux plugin: ptrace.Ptrace."
+        },
+        {
+          "name": "linux_sockstat",
+          "vol3": "linux.sockstat.Sockstat",
+          "vol2": null,
+          "format": "csv",
+          "desc": "Linux plugin: sockstat.Sockstat."
+        },
+        {
+          "name": "linux_tty_check",
+          "vol3": "linux.tty_check.tty_check",
+          "vol2": null,
+          "format": "csv",
+          "desc": "Linux plugin: tty_check.tty_check."
+        },
+        {
+          "name": "linux_vmaregexscan",
+          "vol3": "linux.vmaregexscan.VmaRegExScan",
+          "vol2": null,
+          "format": "csv",
+          "desc": "Linux plugin: vmaregexscan.VmaRegExScan."
+        },
+        {
+          "name": "linux_vmayarascan",
+          "vol3": "linux.vmayarascan.VmaYaraScan",
+          "vol2": null,
+          "format": "csv",
+          "desc": "Linux plugin: vmayarascan.VmaYaraScan."
+        },
+        {
+          "name": "linux_vmcoreinfo",
+          "vol3": "linux.vmcoreinfo.VMCoreInfo",
+          "vol2": null,
+          "format": "csv",
+          "desc": "Linux plugin: vmcoreinfo.VMCoreInfo."
+        },
+        {
+          "name": "linux_check_ftrace",
+          "vol3": "linux.tracing.ftrace.CheckFtrace",
+          "vol2": null,
+          "format": "csv",
+          "desc": "Linux plugin: tracing.ftrace.CheckFtrace."
+        },
+        {
+          "name": "linux_check_perf_events",
+          "vol3": "linux.tracing.perf_events.PerfEvents",
+          "vol2": null,
+          "format": "csv",
+          "desc": "Linux plugin: tracing.perf_events.PerfEvents."
+        },
+        {
+          "name": "linux_check_tracepoints",
+          "vol3": "linux.tracing.tracepoints.CheckTracepoints",
+          "vol2": null,
+          "format": "csv",
+          "desc": "Linux plugin: tracing.tracepoints.CheckTracepoints."
+        }
+      ]
+    },
+    {
+      "name": "macOS",
+      "icon": "apple",
+      "plugins": [
+        {
+          "name": "mac_pslist",
+          "vol3": "mac.pslist.PsList",
+          "vol2": null,
+          "format": "csv",
+          "desc": "macOS plugin: pslist.PsList."
+        },
+        {
+          "name": "mac_pstree",
+          "vol3": "mac.pstree.PsTree",
+          "vol2": null,
+          "format": "csv",
+          "desc": "macOS plugin: pstree.PsTree."
+        },
+        {
+          "name": "mac_psaux",
+          "vol3": "mac.psaux.Psaux",
+          "vol2": null,
+          "format": "csv",
+          "desc": "macOS plugin: psaux.Psaux."
+        },
+        {
+          "name": "mac_bash",
+          "vol3": "mac.bash.Bash",
+          "vol2": null,
+          "format": "csv",
+          "desc": "macOS plugin: bash.Bash."
+        },
+        {
+          "name": "mac_check_syscall",
+          "vol3": "mac.check_syscall.Check_syscall",
+          "vol2": null,
+          "format": "csv",
+          "desc": "macOS plugin: check_syscall.Check_syscall."
+        },
+        {
+          "name": "mac_check_sysctl",
+          "vol3": "mac.check_sysctl.Check_sysctl",
+          "vol2": null,
+          "format": "csv",
+          "desc": "macOS plugin: check_sysctl.Check_sysctl."
+        },
+        {
+          "name": "mac_check_trap_table",
+          "vol3": "mac.check_trap_table.Check_trap_table",
+          "vol2": null,
+          "format": "csv",
+          "desc": "macOS plugin: check_trap_table.Check_trap_table."
+        },
+        {
+          "name": "mac_dmesg",
+          "vol3": "mac.dmesg.Dmesg",
+          "vol2": null,
+          "format": "text",
+          "desc": "macOS plugin: dmesg.Dmesg."
+        },
+        {
+          "name": "mac_ifconfig",
+          "vol3": "mac.ifconfig.Ifconfig",
+          "vol2": null,
+          "format": "csv",
+          "desc": "macOS plugin: ifconfig.Ifconfig."
+        },
+        {
+          "name": "mac_kauth_listeners",
+          "vol3": "mac.kauth_listeners.Kauth_listeners",
+          "vol2": null,
+          "format": "csv",
+          "desc": "macOS plugin: kauth_listeners.Kauth_listeners."
+        },
+        {
+          "name": "mac_kauth_scopes",
+          "vol3": "mac.kauth_scopes.Kauth_scopes",
+          "vol2": null,
+          "format": "csv",
+          "desc": "macOS plugin: kauth_scopes.Kauth_scopes."
+        },
+        {
+          "name": "mac_kevents",
+          "vol3": "mac.kevents.Kevents",
+          "vol2": null,
+          "format": "csv",
+          "desc": "macOS plugin: kevents.Kevents."
+        },
+        {
+          "name": "mac_list_files",
+          "vol3": "mac.list_files.List_Files",
+          "vol2": null,
+          "format": "csv",
+          "desc": "macOS plugin: list_files.List_Files."
+        },
+        {
+          "name": "mac_lsmod",
+          "vol3": "mac.lsmod.Lsmod",
+          "vol2": null,
+          "format": "csv",
+          "desc": "macOS plugin: lsmod.Lsmod."
+        },
+        {
+          "name": "mac_lsof",
+          "vol3": "mac.lsof.Lsof",
+          "vol2": null,
+          "format": "csv",
+          "desc": "macOS plugin: lsof.Lsof."
+        },
+        {
+          "name": "mac_malfind",
+          "vol3": "mac.malfind.Malfind",
+          "vol2": null,
+          "format": "text",
+          "desc": "macOS plugin: malfind.Malfind."
+        },
+        {
+          "name": "mac_mount",
+          "vol3": "mac.mount.Mount",
+          "vol2": null,
+          "format": "csv",
+          "desc": "macOS plugin: mount.Mount."
+        },
+        {
+          "name": "mac_netstat",
+          "vol3": "mac.netstat.Netstat",
+          "vol2": null,
+          "format": "csv",
+          "desc": "macOS plugin: netstat.Netstat."
+        },
+        {
+          "name": "mac_proc_maps",
+          "vol3": "mac.proc_maps.Maps",
+          "vol2": null,
+          "format": "csv",
+          "desc": "macOS plugin: proc_maps.Maps."
+        },
+        {
+          "name": "mac_socket_filters",
+          "vol3": "mac.socket_filters.Socket_filters",
+          "vol2": null,
+          "format": "csv",
+          "desc": "macOS plugin: socket_filters.Socket_filters."
+        },
+        {
+          "name": "mac_timers",
+          "vol3": "mac.timers.Timers",
+          "vol2": null,
+          "format": "csv",
+          "desc": "macOS plugin: timers.Timers."
+        },
+        {
+          "name": "mac_trustedbsd",
+          "vol3": "mac.trustedbsd.Trustedbsd",
+          "vol2": null,
+          "format": "csv",
+          "desc": "macOS plugin: trustedbsd.Trustedbsd."
+        },
+        {
+          "name": "mac_vfsevents",
+          "vol3": "mac.vfsevents.VFSevents",
+          "vol2": null,
+          "format": "csv",
+          "desc": "macOS plugin: vfsevents.VFSevents."
+        }
+      ]
+    }
+  ]
+}

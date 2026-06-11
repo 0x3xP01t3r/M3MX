@@ -1,0 +1,212 @@
+# m3mx tool — Full Analysis V2 macOS detection rules
+
+rules:
+
+  # -----------------------------------------------------------------------
+  - id: mac.osascript_exec
+    title: osascript invoked with -e (inline AppleScript)
+    description: |
+      ``osascript`` is being run with the ``-e`` flag, which embeds an
+      AppleScript expression directly on the command line. Commonly
+      used in macOS post-exploitation to drive Finder / Mail / shell.
+    applies_to: [mac]
+    artifact_type: process
+    match:
+      field_regex:
+        name: '(?i)^osascript$'
+        cmdline: '(?:^|\s)-e(?:\s|$)'
+    base_score: 8              # medium-high; correlation with shell/network lifts it
+    confidence: 0.75
+    category: process
+    mitre:
+      - technique: T1059.002
+        name: AppleScript
+        tactic: Execution
+        reason: |
+          osascript -e is the canonical inline-AppleScript execution
+          path; the AppleScript payload runs directly under the
+          interpreter.
+        confidence: 0.85
+    false_positive_notes: |
+      Some admin scripts and packaging tools legitimately drive
+      AppleScript inline. Check the AppleScript body and the parent.
+    recommended_validation: |
+      1. Capture the full cmdline; extract the AppleScript expression.
+      2. Check parent (Office / browsers / Mail = much more suspicious).
+      3. Look for spawned shells from the same PID.
+    enabled: true
+
+  # -----------------------------------------------------------------------
+  - id: mac.curl_wget_download
+    title: curl / wget on macOS with a public URL
+    description: |
+      A curl or wget invocation is fetching a remote URL on macOS.
+      Tightly tied to the common loader patterns when paired with
+      execution downstream.
+    applies_to: [mac]
+    artifact_type: process
+    match:
+      field_regex:
+        name: '(?i)^(?:curl|wget)$'
+        cmdline: '(?i)https?://'
+    base_score: 5              # medium ceiling — single weak signal
+    confidence: 0.55
+    category: network
+    mitre:
+      - technique: T1105
+        name: Ingress Tool Transfer
+        tactic: Command and Control
+        reason: |
+          The process is actively fetching a URL — the carrier for many
+          payload-delivery patterns when paired with execution.
+        confidence: 0.55
+    false_positive_notes: |
+      curl / wget are routine admin tools. Without a downstream
+      execution step (``| sh``, ``-o /tmp/...`` then ``chmod +x && ./``)
+      the call alone is not interesting.
+    recommended_validation: |
+      1. Extract the URL and check reputation.
+      2. Look at the parent process and surrounding processes.
+      3. Search for the downloaded file on disk.
+    enabled: true
+    modifiers:
+      - apply: private_ip_only
+
+  # -----------------------------------------------------------------------
+  - id: mac.tmp_execution
+    title: macOS process executing from /tmp, /private/tmp or /var/tmp
+    description: |
+      A process is running from a temp / drop-zone path on macOS.
+      Indicator only — pkg installers and some auto-update flows also
+      stage there.
+    applies_to: [mac]
+    artifact_type: process
+    match:
+      field_nonempty: [path]
+      field_regex:
+        path: '^(?:/tmp/|/private/tmp/|/var/tmp/)'
+    base_score: 5
+    confidence: 0.55
+    category: process
+    mitre:
+      - technique: T1059
+        name: Command and Scripting Interpreter
+        tactic: Execution
+        reason: |
+          Drop-zone execution is a common pre-stage for interpreter-driven
+          loaders. Confirm via parent and binary inspection.
+        confidence: 0.5
+    false_positive_notes: |
+      Package installers and updaters legitimately stage and execute
+      from /tmp during normal installs. Pair with a suspect parent or
+      network leg before escalating.
+    recommended_validation: |
+      1. Inspect the binary's signature and notarisation.
+      2. Look up the parent process.
+      3. Look for outbound network connections on the same PID.
+    enabled: true
+    modifiers:
+      - apply: allowlisted_path_or_process
+
+  # -----------------------------------------------------------------------
+  - id: mac.launchagent_persistence
+    title: File in LaunchAgents / LaunchDaemons
+    description: |
+      A file artifact resides under a LaunchAgents / LaunchDaemons
+      directory — the canonical macOS user-mode and system-mode
+      persistence locations.
+    applies_to: [mac]
+    artifact_type: file
+    match:
+      field_regex:
+        file_path: '(?i)/Library/Launch(?:Agents|Daemons)/'
+    base_score: 9
+    confidence: 0.7
+    category: persistence
+    mitre:
+      - technique: T1543.001
+        name: Launch Agent
+        tactic: Persistence
+        reason: |
+          The file path resolves to a LaunchAgent / LaunchDaemon plist
+          location, which is the standard mechanism macOS uses to
+          re-launch programs at login / boot.
+        confidence: 0.8
+    false_positive_notes: |
+      Most third-party apps register a LaunchAgent for auto-update or
+      background services. The plist body and code-sign chain are
+      decisive.
+    recommended_validation: |
+      1. Parse the plist and identify the binary it launches.
+      2. Verify the binary's code-sign / notarisation.
+      3. Check whether the file was installed via a legitimate pkg.
+    enabled: true
+
+  # -----------------------------------------------------------------------
+  - id: mac.osascript_admin_privileges
+    title: osascript invoking "with administrator privileges"
+    description: |
+      osascript / AppleScript is being driven with the ``with
+      administrator privileges`` clause — a common social-engineering
+      pattern that prompts the user for credentials, which the script
+      can then capture or use.
+    applies_to: [mac]
+    artifact_type: process
+    match:
+      field_regex:
+        cmdline: '(?i)osascript[^\n]*with\s+administrator\s+privileges'
+    base_score: 12
+    confidence: 0.85
+    category: credential
+    mitre:
+      - technique: T1548.004
+        name: Elevated Execution with Prompt
+        tactic: Privilege Escalation
+        reason: |
+          The "with administrator privileges" AppleScript clause is
+          the canonical macOS social-engineering escalation path —
+          it shows a credential prompt the operator hopes the user
+          will fill in.
+        confidence: 0.9
+    false_positive_notes: |
+      Some legitimate installers and admin scripts use this clause.
+      Verify the script body and the parent process.
+    recommended_validation: |
+      1. Capture the AppleScript body and inspect for credential
+         theft or system-wide changes.
+      2. Cross-reference the user activity log.
+    enabled: true
+
+  - id: mac.kernel_anomaly_indicator
+    title: Kernel-level anomaly reported by macOS check_* plugin
+    description: |
+      A ``mac.check_*`` plugin reported a syscall / sysctl / trap-table
+      entry with a non-clean status (HOOKED / HIDDEN / SUSPICIOUS).
+      Strong rootkit / kernel-hook indicator.
+    applies_to: [mac]
+    artifact_type: kernel_indicator
+    match:
+      field_nonempty: [status]
+      field_regex:
+        status: '(?i)\bHIDDEN\b|\bHOOKED\b|\bSUSPICIOUS\b|\bUNKNOWN\b'
+    base_score: 16             # critical — strong standalone (kernel)
+    confidence: 0.85
+    category: kernel
+    mitre:
+      - technique: T1014
+        name: Rootkit
+        tactic: Defense Evasion
+        reason: |
+          A hooked / hidden kernel structure is the canonical rootkit
+          signal regardless of OS — by definition it hides attacker code
+          or intercepts kernel paths.
+        confidence: 0.9
+    false_positive_notes: |
+      Some legitimate kernel extensions (older signed kexts, certain
+      virtualization shims) can show as hooked. Code-signing and
+      provenance of the responsible kext are decisive.
+    recommended_validation: |
+      1. Identify the kext / module reporting the anomaly.
+      2. Check the kext's signing chain and team identifier.
+      3. Dump and inspect the suspect kernel region.
+    enabled: true
