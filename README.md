@@ -277,11 +277,11 @@ uploads/ and outputs/
 
 ##  Contributing
 
-Contributions, issues, and feature requests are welcome. Feel free to check the [issues page](https://github.com/your-username/m3mx-tool/issues).
+Contributions, issues, and feature requests are welcome. Feel free to check the [issues page](https://github.com/0x3xP01t3r/M3MX/issues).
 
 ---
 
-## 📜 License
+##  License
 
 This project is released under the [MIT License](LICENSE).
 
