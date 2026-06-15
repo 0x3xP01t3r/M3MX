@@ -18,7 +18,7 @@
 
 ---
 
-## 📖 Overview
+##  Overview
 
 **M3MX** is a Flask-based memory forensics workbench that wraps **Volatility 3** (with **Volatility 2** fallback) behind a clean, browser-based UI. It enables analysts to upload a memory image, run manual or automated forensic plugins, extract memory-resident files, generate findings, map adversary behavior to **MITRE ATT&CK**, build correlated timelines, and optionally bring an **AI agent** into the investigation loop for chat-driven analysis and reporting.
 
@@ -28,9 +28,9 @@
 
 ---
 
-## ✨ Features
+##  Features
 
-### 🔍 V2 Full Analysis Pipeline
+###  V2 Full Analysis Pipeline
 A single click detects the target OS, plans the optimal plugin set, executes Volatility in parallel, normalizes raw output into structured artifacts, evaluates YAML-based detection rules, scores findings, maps them to MITRE ATT&CK, correlates related events, and builds a deterministic timeline + report — all in **10 deterministic stages**.
 
 | Stage | Description |
@@ -46,7 +46,7 @@ A single click detects the target OS, plans the optimal plugin set, executes Vol
 | 09 — Timeline Build | Orders confirmed events chronologically |
 | 10 — Report Generation | Produces Markdown, PDF (WeasyPrint), and DOCX reports |
 
-### 🧠 AI Forensic Agent
+###  AI Forensic Agent
 A chat-driven copilot (`/api/agent/chat`) that supports **OpenAI, Anthropic, Google Gemini, GLM/Zhipu, AgentRouter, and Ollama**. The agent can:
 - Run Volatility plugins on demand
 - Execute shell commands (with destructive-pattern denylisting + logging)
@@ -68,7 +68,7 @@ Generates Markdown, PDF, and DOCX reports from saved plugin output, including an
 
 ---
 
-## 🧰 Tech Stack
+##  Tech Stack
 
 | Component | Technology |
 |---|---|
@@ -82,7 +82,7 @@ Generates Markdown, PDF, and DOCX reports from saved plugin output, including an
 
 ---
 
-## 🚀 Quick Start
+##  Quick Start
 
 ### Docker (Recommended)
 
@@ -175,7 +175,7 @@ Replace the corresponding `RUN apt-get install` block in your `Dockerfile` with 
 
 ---
 
-## 📡 API Reference
+##  API Reference
 
 | Method | Endpoint | Description |
 |---|---|---|
@@ -206,7 +206,7 @@ Replace the corresponding `RUN apt-get install` block in your `Dockerfile` with 
 
 ---
 
-## 🏗️ Architecture
+##  Architecture
 
 M3MX is built as a local Flask-based web application.
 
@@ -265,7 +265,7 @@ uploads/ and outputs/
 
 ---
 
-## 🔒 Security Notes
+##  Security Notes
 
 - **No built-in authentication** — do not expose M3MX directly to the internet.
 - Docker binds to `127.0.0.1:5000` by default (loopback only).
@@ -275,7 +275,7 @@ uploads/ and outputs/
 
 ---
 
-## 🤝 Contributing
+##  Contributing
 
 Contributions, issues, and feature requests are welcome. Feel free to check the [issues page](https://github.com/your-username/m3mx-tool/issues).
 
