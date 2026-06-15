@@ -87,7 +87,7 @@ Generates Markdown, PDF, and DOCX reports from saved plugin output, including an
 ### Docker (Recommended)
 
 ```bash
-git clone https://github.com/your-username/m3mx-tool.git
+git clone https://github.com/0x3xP01t3r/M3MX.git
 cd m3mx-tool
 docker compose up -d --build
 ```
