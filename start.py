@@ -86,7 +86,7 @@ def err(msg: str) -> None:    log("ERR!", msg, C.RED)
 def banner() -> None:
     print(f"{C.PURPLE}{BANNER}{C.R}")
     print(f"   {C.B}{C.PURPLE}m3mx tool{C.R} {C.GREY}|{C.R} {C.INDIGO}Memory Forensics AI Platform{C.R}")
-    print(f"   {C.DIM}graduation project · v1.0{C.R}\n")
+    
 
 
 # ---------------------------------------------------------------------------
