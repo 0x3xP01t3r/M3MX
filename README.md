@@ -12,25 +12,25 @@
 [![Volatility](https://img.shields.io/badge/Volatility-2%20%26%203-orange)](https://www.volatilityfoundation.org/)
 [![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?logo=docker&logoColor=white)](https://www.docker.com/)
 
-[Website](https://www.m3mx.xyz/) • [Features](#-features) • [Quick Start](#-quick-start) • [API](#-api-reference) • [Architecture](#-architecture)
+[Website](https://www.m3mx.xyz/) • [Features](#features) • [Quick Start](#quick-start) • [API](#api-reference) • [Architecture](#architecture)
 
 </div>
 
 ---
 
-##  Overview
+## Overview
 
 **M3MX** is a Flask-based memory forensics workbench that wraps **Volatility 3** (with **Volatility 2** fallback) behind a clean, browser-based UI. It enables analysts to upload a memory image, run manual or automated forensic plugins, extract memory-resident files, generate findings, map adversary behavior to **MITRE ATT&CK**, build correlated timelines, and optionally bring an **AI agent** into the investigation loop for chat-driven analysis and reporting.
 
 > 🎓 This project was developed as a **graduation project** for the Computer Science program at Tafila Technical University. Check out the project website at **[m3mx.xyz](https://www.m3mx.xyz/)**.
 
-> ⚠️ **Designed for local use.** M3MX ships with **no authentication**. It is intended to run on `127.0.0.1` for personal/lab use — see [Security Notes](#-security-notes) before exposing it to a network.
+> ⚠️ **Designed for local use.** M3MX ships with **no authentication**. It is intended to run on `127.0.0.1` for personal/lab use — see [Security Notes](#security-notes) before exposing it to a network.
 
 ---
 
-##  Features
+## Features
 
-###  V2 Full Analysis Pipeline
+### V2 Full Analysis Pipeline
 A single click detects the target OS, plans the optimal plugin set, executes Volatility in parallel, normalizes raw output into structured artifacts, evaluates YAML-based detection rules, scores findings, maps them to MITRE ATT&CK, correlates related events, and builds a deterministic timeline + report — all in **10 deterministic stages**.
 
 | Stage | Description |
@@ -46,7 +46,7 @@ A single click detects the target OS, plans the optimal plugin set, executes Vol
 | 09 — Timeline Build | Orders confirmed events chronologically |
 | 10 — Report Generation | Produces Markdown, PDF (WeasyPrint), and DOCX reports |
 
-###  AI Forensic Agent
+### AI Forensic Agent
 A chat-driven copilot (`/api/agent/chat`) that supports **OpenAI, Anthropic, Google Gemini, GLM/Zhipu, AgentRouter, and Ollama**. The agent can:
 - Run Volatility plugins on demand
 - Execute shell commands (with destructive-pattern denylisting + logging)
@@ -54,21 +54,21 @@ A chat-driven copilot (`/api/agent/chat`) that supports **OpenAI, Anthropic, Goo
 - Perform web/OSINT and threat-intel lookups
 - Persist chat history across sessions
 
-### 🗂️ Interactive File Extractor
+### Interactive File Extractor
 Runs `filescan`, classifies high-value files, and extracts them by offset via `windows.dumpfiles.DumpFiles` (Vol3) or `dumpfiles` (Vol2) — with inline hex/strings/MIME/EXIF previews.
 
-### 🛠️ Manual Plugin Runner
+### Manual Plugin Runner
 Direct access to **178 registered Volatility plugins** spanning Processes, Memory, Network, Registry, Files, Malware, Credentials, System, Shell, Linux, and macOS — with live streaming output (SSE) and sortable CSV result tables.
 
-### 🚦 Quick Triage
+### Quick Triage
 Runs a curated essential plugin set in parallel: `imageinfo`, `pslist`, `pstree`, `psscan`, `cmdline`, `netscan`, `malfind`, `svcscan`, `filescan`, `hashdump`.
 
-### 📄 Reporting
+### Reporting
 Generates Markdown, PDF, and DOCX reports from saved plugin output, including an optional LLM-generated **"Attack Story"** narrative.
 
 ---
 
-##  Tech Stack
+## Tech Stack
 
 | Component | Technology |
 |---|---|
@@ -82,13 +82,13 @@ Generates Markdown, PDF, and DOCX reports from saved plugin output, including an
 
 ---
 
-##  Quick Start
+## Quick Start
 
 ### Docker (Recommended)
 
 ```bash
 git clone https://github.com/0x3xP01t3r/M3MX.git
-cd m3mx-tool
+cd M3MX
 docker compose up -d --build
 ```
 
@@ -107,7 +107,7 @@ http://127.0.0.1:5000
 | `./config.json` | `/app/config.json` | App configuration |
 | `./rules` | `/app/rules` (read-only) | YAML rule packs & baselines |
 
-> 🍏 **Apple Silicon (M1/M2/M3/M4) users** — see the [Apple Silicon / ARM64 Dockerfile note](#-apple-silicon-arm64-notes) below before building.
+> 🍏 **Apple Silicon (M1/M2/M3/M4) users** — see the [Apple Silicon / ARM64 Dockerfile note](#apple-silicon--arm64-notes) below before building.
 
 ---
 
@@ -132,7 +132,7 @@ sudo apt install python2 yara exiftool libcairo2 libpango-1.0-0 libpangoft2-1.0-
 
 ---
 
-## 🍏 Apple Silicon / ARM64 Notes
+## Apple Silicon / ARM64 Notes
 
 If you're building the Docker image on **Apple Silicon (M1/M2/M3/M4)**, some `x86_64`-only packages (notably `zlib1g-dev`, `libjpeg-dev`, `libfreetype6-dev` build chains) require additional dev headers to compile cleanly under emulation/ARM64. Update the system dependency layer in the `Dockerfile` as follows:
 
@@ -175,7 +175,7 @@ Replace the corresponding `RUN apt-get install` block in your `Dockerfile` with 
 
 ---
 
-##  API Reference
+## API Reference
 
 | Method | Endpoint | Description |
 |---|---|---|
@@ -206,7 +206,7 @@ Replace the corresponding `RUN apt-get install` block in your `Dockerfile` with 
 
 ---
 
-##  Architecture
+## Architecture
 
 M3MX is built as a local Flask-based web application.
 
@@ -265,7 +265,7 @@ uploads/ and outputs/
 
 ---
 
-##  Security Notes
+## Security Notes
 
 - **No built-in authentication** — do not expose M3MX directly to the internet.
 - Docker binds to `127.0.0.1:5000` by default (loopback only).
@@ -275,19 +275,19 @@ uploads/ and outputs/
 
 ---
 
-##  Contributing
+## Contributing
 
 Contributions, issues, and feature requests are welcome. Feel free to check the [issues page](https://github.com/0x3xP01t3r/M3MX/issues).
 
 ---
 
-##  License
+## License
 
 This project is released under the [MIT License](LICENSE).
 
 ---
 
-## 🎓 Acknowledgments
+## Acknowledgments
 
 M3MX is a **graduation (capstone) project** developed at **Tafila Technical University**, Department of Computer Science.
 
