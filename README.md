@@ -22,9 +22,9 @@
 
 **M3MX** is a Flask-based memory forensics workbench that wraps **Volatility 3** (with **Volatility 2** fallback) behind a clean, browser-based UI. It enables analysts to upload a memory image, run manual or automated forensic plugins, extract memory-resident files, generate findings, map adversary behavior to **MITRE ATT&CK**, build correlated timelines, and optionally bring an **AI agent** into the investigation loop for chat-driven analysis and reporting.
 
-> 🎓 This project was developed as a **graduation project** for the Computer Science program at Tafila Technical University. Check out the project website at **[m3mx.xyz](https://www.m3mx.xyz/)**.
+>  This project was developed as a **graduation project** for the Computer Science program at Tafila Technical University. Check out the project website at **[m3mx.xyz](https://www.m3mx.xyz/)**.
 
-> ⚠️ **Designed for local use.** M3MX ships with **no authentication**. It is intended to run on `127.0.0.1` for personal/lab use — see [Security Notes](#security-notes) before exposing it to a network.
+>  **Designed for local use.** M3MX ships with **no authentication**. It is intended to run on `127.0.0.1` for personal/lab use — see [Security Notes](#security-notes) before exposing it to a network.
 
 ---
 
@@ -107,13 +107,13 @@ http://127.0.0.1:5000
 | `./config.json` | `/app/config.json` | App configuration |
 | `./rules` | `/app/rules` (read-only) | YAML rule packs & baselines |
 
-> 🍏 **Apple Silicon (M1/M2/M3/M4) users** — see the [Apple Silicon / ARM64 Dockerfile note](#apple-silicon--arm64-notes) below before building.
+>  **Apple Silicon (M1/M2/M3/M4) users** — see the [Apple Silicon / ARM64 Dockerfile note](#apple-silicon--arm64-notes) below before building.
 
 ---
 
 ### Native Setup
 
-> ⚠️ Native setup is designed and tested for **Debian-based distributions**. Other distros may work but are not officially supported.
+>  Native setup is designed and tested for **Debian-based distributions**. Other distros may work but are not officially supported.
 
 ```bash
 sudo apt install python3 python3-pip python3-venv
@@ -253,15 +253,15 @@ uploads/ and outputs/
 
 | Page | Description |
 |---|---|
-| 🏠 **Home** | Upload a memory image and view loaded image status |
-| 🔎 **Full Analysis** | Run the automated 10-stage detection pipeline (OS detection → report generation) |
-| 🛠️ **Manual Analysis** | Run individual Volatility plugins with live streamed output |
-| ⚙️ **Automation Workflows** | Chain plugins/playbooks into repeatable automated workflows |
-| 🤖 **AI Agent** | Chat-based investigation assistant with tool-calling capabilities |
-| 🗂️ **File Extractor** | Scan, preview, and extract files directly from the memory image |
-| ⚙️ **Settings** | Configure Volatility paths, output directory, and AI provider **API keys** |
+|  **Home** | Upload a memory image and view loaded image status |
+|  **Full Analysis** | Run the automated 10-stage detection pipeline (OS detection → report generation) |
+|  **Manual Analysis** | Run individual Volatility plugins with live streamed output |
+|  **Automation Workflows** | Chain plugins/playbooks into repeatable automated workflows |
+|  **AI Agent** | Chat-based investigation assistant with tool-calling capabilities |
+|  **File Extractor** | Scan, preview, and extract files directly from the memory image |
+|  **Settings** | Configure Volatility paths, output directory, and AI provider **API keys** |
 
-> 🔑 **Note:** The AI Agent and AI-generated reports require an **API key** from a supported provider (OpenAI, Anthropic, Google Gemini, GLM/Zhipu, AgentRouter) or a local **Ollama** instance. Configure these under **Settings**.
+>  **Note:** The AI Agent and AI-generated reports require an **API key** from a supported provider (OpenAI, Anthropic, Google Gemini, GLM/Zhipu, AgentRouter) or a local **Ollama** instance. Configure these under **Settings**.
 
 ---
 
@@ -301,6 +301,6 @@ Special thanks to our supervisor, **Dr. Ibrahim Altarawneh**, for his continuous
 
 Built for analysts who need clean, containerized, autonomous memory forensics.
 
-🌐 [m3mx.xyz](https://www.m3mx.xyz/)
+ [m3mx.xyz](https://www.m3mx.xyz/)
 
 </div>
