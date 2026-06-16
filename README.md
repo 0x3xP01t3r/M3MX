@@ -128,7 +128,7 @@ python3 start.py
 sudo apt install python2 yara exiftool libcairo2 libpango-1.0-0 libpangoft2-1.0-0 fonts-dejavu zenity
 ```
 
-> ℹ️ `start.py` binds to `0.0.0.0` by default, exposing the app on **all network interfaces**. Restrict this if running on a shared network.
+>  `start.py` binds to `0.0.0.0` by default, exposing the app on **all network interfaces**. Restrict this if running on a shared network.
 
 ---
 
