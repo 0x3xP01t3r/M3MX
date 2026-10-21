@@ -1,37 +1,44 @@
-# M3MX — single-service compose stack.
-#
-# By default the container binds 127.0.0.1:5000. M3MX has no auth and
-# was designed for a single trusted analyst — DO NOT change the bind
-# to 0.0.0.0:5000 without putting a reverse proxy with auth in front.
 services:
   m3mx:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    image: m3mx:latest
-    container_name: m3mx
+    build: .
+    image: m3mx:local
     restart: unless-stopped
+    user: "10001:10001"
     ports:
       - "127.0.0.1:5000:5000"
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    pids_limit: 256
+    mem_limit: 4g
+    cpus: 2
     volumes:
-      - ./uploads:/app/uploads
-      - ./outputs:/app/outputs
-      - ./config.json:/app/config.json
+      - m3mx-uploads:/app/uploads
+      - m3mx-outputs:/app/outputs
+      - m3mx-state:/app/state
       - ./rules:/app/rules:ro
-    # Let the agent reach a host-side Ollama daemon when the user runs one.
+    tmpfs:
+      - /tmp:size=128m,mode=1777
     extra_hosts:
       - "host.docker.internal:host-gateway"
     environment:
-      - PYTHONUNBUFFERED=1
-      - VOL3_ALLOW_PARTIAL_DUMP=1
+      M3MX_STATE_DIR: /app/state
+      M3MX_OLLAMA_URL: http://host.docker.internal:11434
+      M3MX_OLLAMA_ENDPOINTS: http://host.docker.internal:11434
+      VOL3_PATH: /app/bin/vol
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      GOOGLE_API_KEY: ${GOOGLE_API_KEY:-}
+      GLM_API_KEY: ${GLM_API_KEY:-}
+      AGENTROUTER_API_KEY: ${AGENTROUTER_API_KEY:-}
+      ABUSEIPDB_API_KEY: ${ABUSEIPDB_API_KEY:-}
+      VIRUSTOTAL_API_KEY: ${VIRUSTOTAL_API_KEY:-}
     logging:
       driver: json-file
       options:
         max-size: "20m"
         max-file: "5"
-    healthcheck:
-      test: ["CMD", "curl", "-fsS", "http://localhost:5000/api/health"]
-      interval: 30s
-      timeout: 5s
-      retries: 3
-      start_period: 15s
+volumes:
+  m3mx-uploads:
+  m3mx-outputs:
+  m3mx-state:

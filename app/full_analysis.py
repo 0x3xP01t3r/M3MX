@@ -242,7 +242,8 @@ def _rules_netscan(columns, rows, fid) -> list[Finding]:
         owner   = (_get(idx, row, "Owner") or "").strip()
         pid     = _get(idx, row, "PID")
         proto   = (_get(idx, row, "Proto", "Protocol") or "").upper()
-        if not foreign or foreign.startswith(("0.0.0.0", "*", "[::]", "::")):
+        # Parsed artifact addresses, not socket bind configuration.
+        if not foreign or foreign.startswith(("0.0.0.0", "*", "[::]", "::")):  # nosec B104
             continue
         # Only TCP connections — UDP "connections" without state are listening
         # endpoints, not exfil channels.
@@ -447,16 +448,13 @@ def _case_dir(image_path: str | Path) -> Path:
     # in the same root that /api/outputs/download / Manual Analysis /
     # File Extractor already serve from. Falls back to OUTPUTS_DIR when
     # the configured dir is unwritable (safe_output_dir() handles that).
-    from .config import safe_output_dir
-    stem = Path(image_path).stem or "case"
-    root = Path(safe_output_dir())
-    case = root / "full_analysis" / stem
-    case.mkdir(parents=True, exist_ok=True)
-    return case
+    from .evidence import case_directory
+    return case_directory(image_path)
 
 
 def save_findings(findings: list[Finding], image_path: str | Path) -> Path:
     case = _case_dir(image_path)
+    case.mkdir(parents=True, exist_ok=True)
     target = case / "findings.jsonl"
     with open(target, "w", encoding="utf-8") as f:
         for fnd in findings:
@@ -494,6 +492,9 @@ def run_triage(image_path: str | Path,
     # Local import to avoid eagerly loading config + V2 modules at module
     # import time. V1 modules are imported only inside _run_triage_v1.
     from .config import fa2_enabled, fa2_legacy_v1_enabled
+    from .evidence import begin_run
+    if fa2_enabled() or fa2_legacy_v1_enabled():
+        begin_run(image_path)
     if fa2_enabled():
         yield from _run_triage_v2(image_path, vol_paths, timeout, plugin_names)
         return
@@ -851,17 +852,6 @@ def _run_triage_v2(image_path: str | Path,
         pipeline_warnings.append({"phase": "timeline",
                                   "warnings": [str(e)]})
 
-    # ── Step 9b: deterministic Markdown/HTML report ──────────────────
-    # Uses ONLY the already-written outputs — no LLM, no Volatility.
-    # Produced after timeline so the report can include timeline totals.
-    try:
-        report_result = report_persist(case, image_path=image)
-        yield report_ready_event(report_result)
-    except Exception as e:                                        # pragma: no cover
-        log.warning("deterministic report failed: %s", e)
-        pipeline_warnings.append({"phase": "report",
-                                  "warnings": [str(e)]})
-
     # ── Step 10: persist failed_plugins.json + limitations.json ─────
     if failed_plugins:
         try:
@@ -880,6 +870,19 @@ def _run_triage_v2(image_path: str | Path,
             )
         except OSError as e:
             log.warning("could not write limitations.json: %s", e)
+
+    # ── Step 9b: deterministic Markdown/HTML report ──────────────────
+    # Uses ONLY the already-written outputs — no LLM, no Volatility.
+    # Produced after timeline so the report can include timeline totals.
+    try:
+        report_result = report_persist(case, image_path=image)
+        yield report_ready_event(report_result)
+    except Exception as e:                                        # pragma: no cover
+        log.warning("deterministic report failed: %s", e)
+        pipeline_warnings.append({"phase": "report",
+                                  "warnings": [str(e)]})
+        from .storage import write_json
+        write_json(case / "limitations.json", pipeline_warnings)
 
     # ── Step 11: terminal `done` event (legacy contract) ────────────
     yield {

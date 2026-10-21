@@ -56,6 +56,11 @@ class CaseOutputs:
     def has_findings(self) -> bool:
         return bool(self.findings)
 
+    @property
+    def has_findings_file(self) -> bool:
+        """A valid completed run may contain zero findings."""
+        return "findings.jsonl" in self.files_present
+
 
 # ---------------------------------------------------------------------------
 # Loaders
@@ -88,9 +93,8 @@ def load_case_outputs(case_dir: str | Path) -> CaseOutputs:
     """
     Read every available output file from *case_dir*. Never raises.
 
-    Use :attr:`CaseOutputs.has_findings` to decide whether the case is
-    eligible for AI Report generation — ``findings.jsonl`` is the only
-    required input.
+    ``has_findings_file`` distinguishes completed zero-finding runs from
+    missing input. ``has_findings`` indicates actual positive findings.
     """
     case = Path(case_dir)
     out = CaseOutputs(case_dir=str(case.resolve() if case.exists() else case))

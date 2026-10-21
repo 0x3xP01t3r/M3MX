@@ -1,0 +1,9 @@
+# Optional, offline legacy CLI. Never expose this EOL Python runtime as a web service.
+FROM python:2.7.18-slim-buster
+WORKDIR /opt/volatility2
+COPY bin/volatility2/ ./
+RUN pip install --no-cache-dir pycryptodome==3.9.9 \
+    && mkdir /outputs && chmod 1777 /outputs
+USER 65534:65534
+WORKDIR /outputs
+ENTRYPOINT ["python2", "/opt/volatility2/vol.py"]

@@ -1,306 +1,148 @@
-<div align="center">
-
 # M3MX
 
-### Unified Autonomous Memory Forensics Workbench
+Local memory-forensics workbench for Volatility 3, with manual analysis,
+automated rules, correlated timelines, file extraction, reports, and an
+optional AI assistant. Developed as a Computer Science graduation project at
+Tafila Technical University. Project website: [m3mx.xyz](https://www.m3mx.xyz/).
 
-**Orchestrate Volatility. Guided by Intelligence.**
+M3MX is intended for one analyst on a local machine. The native launcher and
+default Docker publication use localhost. See [SECURITY.md](SECURITY.md) before
+changing that deployment boundary.
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Python](https://img.shields.io/badge/Python-3.9%2B-blue)](https://www.python.org/)
-[![Flask](https://img.shields.io/badge/Flask-3.0-black)](https://flask.palletsprojects.com/)
-[![Volatility](https://img.shields.io/badge/Volatility-2%20%26%203-orange)](https://www.volatilityfoundation.org/)
-[![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?logo=docker&logoColor=white)](https://www.docker.com/)
+## Start with Docker
 
-[Website](https://www.m3mx.xyz/) • [Features](#features) • [Quick Start](#quick-start) • [API](#api-reference) • [Architecture](#architecture)
-
-</div>
-
----
-
-## Overview
-
-**M3MX** is a Flask-based memory forensics workbench that wraps **Volatility 3** (with **Volatility 2** fallback) behind a clean, browser-based UI. It enables analysts to upload a memory image, run manual or automated forensic plugins, extract memory-resident files, generate findings, map adversary behavior to **MITRE ATT&CK**, build correlated timelines, and optionally bring an **AI agent** into the investigation loop for chat-driven analysis and reporting.
-
->  This project was developed as a **graduation project** for the Computer Science program at Tafila Technical University. Check out the project website at **[m3mx.xyz](https://www.m3mx.xyz/)**.
-
->  **Designed for local use.** M3MX ships with **no authentication**. It is intended to run on `127.0.0.1` for personal/lab use — see [Security Notes](#security-notes) before exposing it to a network.
-
----
-
-## Features
-
-### V2 Full Analysis Pipeline
-A single click detects the target OS, plans the optimal plugin set, executes Volatility in parallel, normalizes raw output into structured artifacts, evaluates YAML-based detection rules, scores findings, maps them to MITRE ATT&CK, correlates related events, and builds a deterministic timeline + report — all in **10 deterministic stages**.
-
-| Stage | Description |
-|-------|-------------|
-| 01 — OS Detection | Identifies kernel/profile from the memory image |
-| 02 — Plugin Planning | Selects relevant plugins based on OS |
-| 03 — Volatility Run | Executes plugins via parallelized subprocess streams |
-| 04 — Normalization | Converts raw rows into unified artifact types |
-| 05 — Rule Engine | Applies YAML detection rules & baselines |
-| 06 — Scoring | Maps findings to info/low/medium/high/critical |
-| 07 — MITRE Mapping | Correlates behavior to ATT&CK techniques |
-| 08 — Correlation | Links related PIDs, sockets, VAD nodes, etc. |
-| 09 — Timeline Build | Orders confirmed events chronologically |
-| 10 — Report Generation | Produces Markdown, PDF (WeasyPrint), and DOCX reports |
-
-### AI Forensic Agent
-A chat-driven copilot (`/api/agent/chat`) that supports **OpenAI, Anthropic, Google Gemini, GLM/Zhipu, AgentRouter, and Ollama**. The agent can:
-- Run Volatility plugins on demand
-- Execute shell commands (with destructive-pattern denylisting + logging)
-- Read and list output files
-- Perform web/OSINT and threat-intel lookups
-- Persist chat history across sessions
-
-### Interactive File Extractor
-Runs `filescan`, classifies high-value files, and extracts them by offset via `windows.dumpfiles.DumpFiles` (Vol3) or `dumpfiles` (Vol2) — with inline hex/strings/MIME/EXIF previews.
-
-### Manual Plugin Runner
-Direct access to **178 registered Volatility plugins** spanning Processes, Memory, Network, Registry, Files, Malware, Credentials, System, Shell, Linux, and macOS — with live streaming output (SSE) and sortable CSV result tables.
-
-### Quick Triage
-Runs a curated essential plugin set in parallel: `imageinfo`, `pslist`, `pstree`, `psscan`, `cmdline`, `netscan`, `malfind`, `svcscan`, `filescan`, `hashdump`.
-
-### Reporting
-Generates Markdown, PDF, and DOCX reports from saved plugin output, including an optional LLM-generated **"Attack Story"** narrative.
-
----
-
-## Tech Stack
-
-| Component | Technology |
-|---|---|
-| Backend | Python 3, Flask, Flask-CORS |
-| Forensics Engines | Volatility 3 (primary), Volatility 2 (fallback) |
-| Frontend | Server-rendered templates + vanilla JS (`static/js/app.js`) |
-| Config & Rules | JSON config, `plugins.json`, YAML rule packs & baselines |
-| AI Providers | OpenAI, Anthropic, Google Gemini, GLM/Zhipu, AgentRouter, Ollama |
-| Reporting | ReportLab, WeasyPrint, python-docx, Markdown → HTML/PDF |
-| Containerization | Docker / Docker Compose |
-
----
-
-## Quick Start
-
-### Docker (Recommended)
-
-```bash
-git clone https://github.com/0x3xP01t3r/M3MX.git
-cd M3MX
+```sh
 docker compose up -d --build
 ```
 
-Then open your browser at:
+Open `http://127.0.0.1:5000`. The modern container runs as a non-root user,
+uses Gunicorn, drops Linux capabilities, and has a read-only root filesystem.
+Named volumes persist images, outputs, and private settings without requiring
+host-folder ownership changes. Rules are mounted read-only.
 
-```
-http://127.0.0.1:5000
-```
+Compose approves host Ollama at `http://host.docker.internal:11434`. Start an
+Ollama daemon on the host if you want local AI. Other providers require their
+own credentials. Native and Docker use the same pinned Python requirements.
 
-#### Docker Volumes
+## Native installation
 
-| Host Path | Container Path | Purpose |
-|---|---|---|
-| `./uploads` | `/app/uploads` | Uploaded memory images |
-| `./outputs` | `/app/outputs` | Plugin outputs, cases, reports, logs |
-| `./config.json` | `/app/config.json` | App configuration |
-| `./rules` | `/app/rules` (read-only) | YAML rule packs & baselines |
+Python 3.11+ and Linux are required. On Debian-based systems:
 
->  **Apple Silicon (M1/M2/M3/M4) users** — see the [Apple Silicon / ARM64 Dockerfile note](#apple-silicon--arm64-notes) below before building.
-
----
-
-### Native Setup
-
->  Native setup is designed and tested for **Debian-based distributions**. Other distros may work but are not officially supported.
-
-```bash
-sudo apt install python3 python3-pip python3-venv
+```sh
+sudo apt install python3 python3-venv libpango-1.0-0 libpangoft2-1.0-0 \
+  libharfbuzz-subset0 fonts-dejavu-core
+python3 -m venv .venv
+. .venv/bin/activate
 pip install -r requirements.txt
-pip install volatility3
-python3 start.py
+python start.py
 ```
 
-#### Optional Native Components
+Optional system tools: `yara`, `exiftool`, `file`, `binutils`, `xxd`, and
+`zenity`. Native startup uses one threaded Gunicorn worker on loopback;
+`M3MX_PORT` selects another port. `VOL3_PATH` selects a trusted Volatility
+executable. Python 2 is not required for the default application.
 
-```bash
-sudo apt install python2 yara exiftool libcairo2 libpango-1.0-0 libpangoft2-1.0-0 fonts-dejavu zenity
+Volatility 2 remains an optional legacy native fallback or isolated CLI
+container. Its EOL runtime is deliberately excluded from the modern web image.
+See [migration and legacy instructions](docs/MIGRATION.md).
+
+## Investigation workflow
+
+1. Upload an image. M3MX assigns an evidence ID and records a streaming SHA-256
+   hash; uploading does not start analysis.
+2. Choose Manual Analysis, Quick Triage, an Automation Workflow, or Full Analysis.
+3. Review raw results, rule findings, confidence, MITRE mappings, correlations,
+   limitations, and timeline events.
+4. Extract files and inspect bounded hex/strings/metadata previews.
+5. Generate deterministic reports or explicitly request an AI narrative/report.
+
+Full Analysis V2 defaults on. Its OS detection, plugin planning, execution,
+normalization, rules, scoring, mapping, correlation, timeline, and reporting
+stages preserve the existing finding and SSE schemas. Each explicit run gets
+its own output directory; reruns do not overwrite prior investigations.
+
+The AI assistant supports OpenAI, Anthropic, Google Gen AI, GLM, AgentRouter,
+and local Ollama. Agent command tools default off. When enabled, only
+allowlisted read-only commands can be proposed, and the analyst must approve
+each exact command in the browser. There is no general shell or interpreter
+capability. External OSINT tools are separately disabled by default.
+Report generation and automation synthesis cannot execute agent tools.
+
+## Settings and evidence storage
+
+Public defaults: [config.example.json](config.example.json).
+Actual native settings and secrets: `.m3mx/`, excluded from Git and Docker.
+Keys are stored separately with mode 0600, or supplied through environment
+variables, which take priority. The browser receives only configured markers.
+
+```text
+app/                 Flask backend, security policies, runners, reports
+app/fa2/             Normalizers, rules, scoring, MITRE, correlations, timeline
+app/routes/          Route groups, including confined filesystem operations
+rules/               YAML detection rules and baselines; optional YARA rules
+templates/           HTML interface without inline script handlers
+static/js/           Shared requests, core/manual, agent, analysis, extractor, workflows
+static/vendor/       Local fonts/icons and their license notices
+uploads/             Native evidence, unique IDs, SHA-256 manifests
+outputs/             Native plugin outputs, separate analysis runs, extracted files
+tests/               Synthetic fixtures and security/regression tests
 ```
 
->  `start.py` binds to `0.0.0.0` by default, exposing the app on **all network interfaces**. Restrict this if running on a shared network.
+Register extra trusted roots and AI services at launch, not through model
+arguments. The [migration guide](docs/MIGRATION.md) explains those variables,
+old-config migration, Docker volumes, resource limits, and compatibility.
 
----
+## API
 
-## Apple Silicon / ARM64 Notes
+Existing route names are preserved. Every unsafe request requires
+`X-M3MX-Token` from the same-origin page's `m3mx-token` meta element. Host and
+Origin checks apply to read endpoints too. This is local browser protection,
+not multi-user authentication.
 
-If you're building the Docker image on **Apple Silicon (M1/M2/M3/M4)**, some `x86_64`-only packages (notably `zlib1g-dev`, `libjpeg-dev`, `libfreetype6-dev` build chains) require additional dev headers to compile cleanly under emulation/ARM64. Update the system dependency layer in the `Dockerfile` as follows:
-
-**For Apple Silicon (ARM64):**
-
-```dockerfile
-RUN apt-get update && apt-get install -y --no-install-recommends \
-        python2 python2-dev \
-        yara \
-        exiftool \
-        libcairo2 libpango-1.0-0 libpangoft2-1.0-0 libgdk-pixbuf-2.0-0 \
-        shared-mime-info libffi-dev libssl-dev \
-        zlib1g-dev libjpeg-dev libfreetype6-dev \
-        fonts-dejavu fonts-dejavu-core \
-        build-essential \
-        ca-certificates curl \
-    && rm -rf /var/lib/apt/lists/*
-
-WORKDIR /app
-```
-
-**For standard x86_64 systems:**
-
-```dockerfile
-RUN apt-get update && apt-get install -y --no-install-recommends \
-        python2 python2-dev \
-        yara \
-        exiftool \
-        libcairo2 libpango-1.0-0 libpangoft2-1.0-0 libgdk-pixbuf-2.0-0 \
-        shared-mime-info libffi-dev libssl-dev \
-        fonts-dejavu fonts-dejavu-core \
-        build-essential \
-        ca-certificates curl \
-    && rm -rf /var/lib/apt/lists/*
-
-WORKDIR /app
-```
-
-Replace the corresponding `RUN apt-get install` block in your `Dockerfile` with the version matching your architecture before running `docker compose up -d --build`.
-
----
-
-## API Reference
-
-| Method | Endpoint | Description |
-|---|---|---|
-| `GET` | `/api/health` | Health check |
-| `GET/POST` | `/api/settings` | Get/update app configuration |
-| `POST` | `/api/upload` | Upload a memory image (chunked) |
-| `GET` | `/api/plugins` | List registered Volatility plugins |
-| `POST` | `/api/run-plugin` | Run a single plugin |
-| `POST` | `/api/run-plugin/stream` | Stream plugin execution (SSE) |
-| `POST` | `/api/triage` | Run quick triage plugin set |
-| `POST` | `/api/full-analysis` | Run Full Analysis V1/V2 pipeline |
-| `GET` | `/api/full-analysis/case` | Retrieve Full Analysis case data |
-| `POST` | `/api/full-analysis/ai-report` | Generate AI-narrated report |
-| `POST` | `/api/full-analysis/export-pdf` | Export Full Analysis report as PDF |
-| `POST` | `/api/files/scan` | Run filescan |
-| `POST` | `/api/files/preview` | Preview file by offset (hex/strings/EXIF) |
-| `POST` | `/api/files/extract` | Extract file from memory image |
-| `GET` | `/api/files/raw` | Serve raw extracted file |
-| `GET` | `/api/outputs` | List saved outputs |
-| `GET` | `/api/outputs/view` | View an output file |
-| `GET` | `/api/outputs/download` | Download an output file |
-| `POST` | `/api/outputs/delete` | Delete an output file |
-| `POST` | `/api/reports/generate` | Generate Markdown/PDF/DOCX report |
-| `POST` | `/api/agent/chat` | Chat with the AI forensic agent |
-| `GET` | `/api/agent/history` | Get agent chat history |
-| `POST` | `/api/agent/test` | Test AI provider connection |
-| `POST` | `/api/agent/reset` | Reset agent chat history |
-
----
-
-## Architecture
-
-M3MX is built as a local Flask-based web application.
-
-**High-level flow:**
-
-```
-User Browser
-    |
-    v
-M3MX Web Interface
-    |
-    v
-Flask Backend
-    |
-    +--> Volatility 3
-    |
-    +--> Volatility 2
-    |
-    +--> Rule Engine
-    |
-    +--> File Extractor
-    |
-    +--> Report Generator
-    |
-    +--> Optional AI Agent
-    |
-    v
-uploads/ and outputs/
-```
-
-**Typical analysis flow:**
-
-1. Upload memory image
-2. Select analysis mode
-3. Backend runs Volatility plugins
-4. Results are parsed and normalized
-5. Detection rules are applied
-6. Findings are scored
-7. Timeline and correlations are generated
-8. Reports and exports are created
-9. Analyst reviews evidence from the GUI
-
-### App Pages
-
-| Page | Description |
+| Routes | Purpose |
 |---|---|
-|  **Home** | Upload a memory image and view loaded image status |
-|  **Full Analysis** | Run the automated 10-stage detection pipeline (OS detection → report generation) |
-|  **Manual Analysis** | Run individual Volatility plugins with live streamed output |
-|  **Automation Workflows** | Chain plugins/playbooks into repeatable automated workflows |
-|  **AI Agent** | Chat-based investigation assistant with tool-calling capabilities |
-|  **File Extractor** | Scan, preview, and extract files directly from the memory image |
-|  **Settings** | Configure Volatility paths, output directory, and AI provider **API keys** |
+| `/api/health`, `/api/status`, `/api/loaded-image` | Runtime status |
+| `/api/settings`, `/api/ollama/models` | Settings and approved local model discovery |
+| `/api/upload` | Upload only; unique image and SHA-256 manifest |
+| `/api/plugins`, `/api/run-plugin`, `/api/run-plugin/stream` | Plugin registry and execution |
+| `/api/triage`, `/api/full-analysis` | Explicit triage and Full Analysis |
+| `/api/full-analysis/case`, `/ai-report`, `/export-pdf` | Case reload, optional AI report, deterministic PDF export |
+| `/api/files/scan`, `/preview`, `/extract`, `/raw` | Extraction and safe previews/downloads |
+| `/api/outputs`, `/view`, `/download`, `/delete` | Saved output management |
+| `/api/reports/generate` | Report-only AI synthesis and export |
+| `/api/agent/chat`, `/history`, `/test`, `/reset`, `/approve` | Agent and one-use command approval |
+| `/api/fs/browse`, `/mkdir`, `/pick-dir-native` | Approved output directories only |
 
->  **Note:** The AI Agent and AI-generated reports require an **API key** from a supported provider (OpenAI, Anthropic, Google Gemini, GLM/Zhipu, AgentRouter) or a local **Ollama** instance. Configure these under **Settings**.
+Rows with abbreviated suffixes share the first route's prefix.
+See [the compatibility contract](app/fa2/CONTRACT.md) for event and finding fields.
 
----
+## Verification
 
-## Security Notes
+```sh
+pip install -r requirements-dev.txt
+pytest -q
+bandit -q -r app start.py -ll
+pip-audit --progress-spinner off
+docker compose config --quiet
+```
 
-- **No built-in authentication** — do not expose M3MX directly to the internet.
-- Docker binds to `127.0.0.1:5000` by default (loopback only).
-- Native `start.py` binds to `0.0.0.0` by default — change this for restricted environments.
-- The AI agent can execute shell commands (`ai.allow_shell_commands: true` by default). Destructive command patterns are denied, and all shell attempts are logged to `outputs/agent_security.log`.
-- Output file serving enforces path resolution checks to prevent directory traversal.
+Tests use temporary directories and synthetic evidence. They check request
+protection, paths/symlinks, secrets, command approvals, SSRF, upload identity,
+stream cleanup, cache invalidation, normalizers, rules, and real PDF rendering.
+GitHub Actions runs tests, security/dependency scans, and hardened Docker startup.
+Real-image accuracy and performance require representative analyst fixtures.
 
----
+For a local browser smoke test, install `requirements-browser.txt` and run
+`python tests/browser_smoke.py http://127.0.0.1:5057` against an isolated fixture
+server. It uploads synthetic data and saves settings; do not point it at an
+active investigation. See [the prompt injection demonstration](docs/PROMPT_INJECTION_DEMO.md)
+for tests that deliberately simulate a model following hostile artifact text.
 
-## Contributing
+## License and acknowledgments
 
-Contributions, issues, and feature requests are welcome. Feel free to check the [issues page](https://github.com/0x3xP01t3r/M3MX/issues).
+First-party M3MX code is MIT licensed. Third-party components retain their own
+licenses; Volatility 2 is GPL-2.0-or-later, and Volatility 3 uses VSL. See
+[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) and the bundled notices.
 
----
-
-## License
-
-This project is released under the [MIT License](LICENSE).
-
----
-
-## Acknowledgments
-
-M3MX is a **graduation (capstone) project** developed at **Tafila Technical University**, Department of Computer Science.
-
-A huge thanks to my teammates for their effort and dedication throughout this project — this wouldn't have been possible without the great teamwork.
-
-Special thanks to our supervisor, **Dr. Ibrahim Altarawneh**, for his continuous guidance and support throughout the development of this project.
-
----
-
-<div align="center">
-
-Built for analysts who need clean, containerized, autonomous memory forensics.
-
- [m3mx.xyz](https://www.m3mx.xyz/)
-
-</div>
+Thanks to the project teammates for their effort and dedication, and to
+Dr. Ibrahim Altarawneh for his guidance and support.

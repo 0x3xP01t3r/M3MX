@@ -26,6 +26,8 @@ import logging
 import re
 import shutil
 import subprocess
+from ..processes import run_command
+from ..security import checked_path, PolicyError
 import time
 from dataclasses import dataclass, field, asdict
 from pathlib import Path
@@ -81,10 +83,7 @@ def _run_subprocess(cmd: list[str], timeout: int) -> _CompletedProcess:
     Tests monkey-patch this entire function so we never spawn real vol.
     """
     try:
-        proc = subprocess.run(
-            cmd, capture_output=True, text=True,
-            timeout=timeout, errors="replace",
-        )
+        proc = run_command(cmd, timeout=timeout)
         return _CompletedProcess(
             returncode=proc.returncode,
             stdout=proc.stdout or "",
@@ -179,7 +178,10 @@ def run_plugin(image_path: str | Path,
     Never raises. On any failure the returned object has
     ``success=False`` and a short ``error`` message.
     """
-    img = str(Path(image_path).resolve()) if image_path else ""
+    try:
+        img = str(checked_path(image_path, ("evidence",), file=True))
+    except (PolicyError, OSError) as exc:
+        return RunnerResult(plugin=plugin, success=False, error=str(exc))
     vol3 = _vol3_binary(vol_paths)
     if not vol3:
         return RunnerResult(plugin=plugin, success=False,
@@ -187,7 +189,7 @@ def run_plugin(image_path: str | Path,
     if not img or not Path(img).exists():
         return RunnerResult(plugin=plugin, success=False,
                             error=f"image not found: {image_path!r}")
-    if not plugin or not isinstance(plugin, str):
+    if not isinstance(plugin, str) or not re.fullmatch(r"[A-Za-z_]\w*(?:\.[A-Za-z_]\w*)+", plugin):
         return RunnerResult(plugin=str(plugin), success=False,
                             error="invalid plugin name")
 

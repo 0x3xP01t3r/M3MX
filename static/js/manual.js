@@ -23,7 +23,7 @@
   // ------------------------------------------------------------------
   async function init() {
     try {
-      const res = await fetch("/api/plugins");
+      const res = await m3mxFetch("/api/plugins");
       state.registry = await res.json();
       renderRegistry();
     } catch (e) {
@@ -121,7 +121,7 @@
       </div>`;
 
     try {
-      const r = await fetch("/api/run-plugin", {
+      const r = await m3mxFetch("/api/run-plugin", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ plugin: name, version }),

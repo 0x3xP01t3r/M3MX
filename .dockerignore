@@ -1,7 +1,13 @@
 # M3MX — files NOT to send to the Docker build context.
 #
-# Keep `config.json` in scope — it's a real file we COPY into the image
-# (and then bind-mount over at runtime so changes persist).
+# Real settings and secrets never enter the build context.
+config.json
+.m3mx/
+state/
+tests/
+docs/
+**/.pytest_cache/
+.coverage
 
 .git
 .gitignore

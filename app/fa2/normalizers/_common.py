@@ -72,7 +72,8 @@ def to_lower(s: str | None) -> str:
 # the correlation engine groups them into spurious chains. See OD-003.
 _IP_PLACEHOLDERS: frozenset[str] = frozenset((
     "", "-", "*",
-    "0.0.0.0",
+    # Parsed artifact sentinel; this is not a listening socket.
+    "0.0.0.0",  # nosec B104
     "::", "::0", "[::]",
     "::ffff:0.0.0.0",
 ))

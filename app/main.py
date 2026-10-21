@@ -18,18 +18,23 @@ from pathlib import Path
 import json as _json
 import os
 import tempfile
+import hashlib
+import uuid
+from logging.handlers import RotatingFileHandler
 
 import requests
 from flask import Flask, Response, jsonify, render_template, request, send_from_directory, stream_with_context
-from flask_cors import CORS
 from werkzeug.utils import secure_filename
 
 from . import __appname__, __version__
 from .config import (
     load_config, masked_config, save_config,
     safe_output_dir, reset_safe_output_cache,
-    OUTPUTS_DIR, UPLOADS_DIR,
+    OUTPUTS_DIR, UPLOADS_DIR, migrate_config,
 )
+from .security import (install_request_security, validate_settings, checked_path,
+                       checked_endpoint, bounded_read, PolicyError)
+from .storage import write_json
 from . import forensics, plugins as plugin_registry, agent as agent_mod, file_extractor, reports
 from . import full_analysis, attack_story
 
@@ -41,10 +46,15 @@ logging.basicConfig(
 )
 log = logging.getLogger("m3mx")
 
-# File log to outputs/m3mx.log (rotated manually by caller if it grows)
+# Bounded application log with three rotated backups.
 _log_path = OUTPUTS_DIR / "m3mx.log"
 _log_path.parent.mkdir(exist_ok=True, parents=True)
-_fh = logging.FileHandler(_log_path, encoding="utf-8")
+try:
+    _fh = RotatingFileHandler(_log_path, maxBytes=5 * 1024**2, backupCount=3, encoding="utf-8")
+except OSError:
+    # Old bind mounts may contain a log owned by another UID. Keep startup
+    # usable and report diagnostics to stderr without changing its ownership.
+    _fh = logging.StreamHandler()
 _fh.setFormatter(logging.Formatter(
     "%(asctime)s [%(levelname)s] %(name)s: %(message)s"))
 # Attach to the m3mx.* hierarchy only (not to root, to keep console clean)
@@ -59,7 +69,7 @@ def create_app(volatility_paths: dict | None = None) -> Flask:
     )
     # Don't let the browser cache static JS/CSS — hot-reload on every refresh.
     app.config["SEND_FILE_MAX_AGE_DEFAULT"] = 0
-    CORS(app)
+    migrate_config()
 
     # Store runtime state on the app
     app.config["VOLATILITY_PATHS"] = volatility_paths or {"vol2": None, "vol3": None}
@@ -67,9 +77,9 @@ def create_app(volatility_paths: dict | None = None) -> Flask:
     app.config["APP_VERSION"] = __version__
     app.config["UPLOADS_DIR"] = str(UPLOADS_DIR)
     app.config["OUTPUTS_DIR"] = str(OUTPUTS_DIR)
-    # Unlimited upload size — supports 10 GB+ memory images.
-    app.config["MAX_CONTENT_LENGTH"] = None
-    app.config["MAX_FORM_MEMORY_SIZE"] = None  # don't buffer form fields in RAM either
+    install_request_security(app)
+    from .routes.filesystem import filesystem
+    app.register_blueprint(filesystem)
 
     # Werkzeug's multipart parser spills to tempfile when the part exceeds 500 KB.
     # The default tempdir on many systems is /tmp (often a small tmpfs). Redirect
@@ -88,6 +98,7 @@ def create_app(volatility_paths: dict | None = None) -> Flask:
             "index.html",
             app_name=__appname__,
             version=__version__,
+            request_token=app.config["M3MX_REQUEST_TOKEN"],
         )
 
     @app.route("/api/health")
@@ -106,6 +117,7 @@ def create_app(volatility_paths: dict | None = None) -> Flask:
     @app.route("/api/settings", methods=["POST"])
     def update_settings():
         body = request.get_json(silent=True) or {}
+        validate_settings(body)
         # Filter out masked/placeholder API keys so "••••" doesn't overwrite real values
         keys = body.get("ai", {}).get("api_keys", {})
         body.setdefault("ai", {})["api_keys"] = {
@@ -162,19 +174,33 @@ def create_app(volatility_paths: dict | None = None) -> Flask:
         ext = Path(fname).suffix.lower()
         if ext not in ALLOWED_EXT:
             return jsonify({"error": f"unsupported extension {ext}"}), 400
-        dest = UPLOADS_DIR / fname
+        evidence_id = uuid.uuid4().hex
+        evidence_dir = checked_path(UPLOADS_DIR / evidence_id, ("evidence",), must_exist=False)
+        evidence_dir.mkdir(mode=0o700)
+        dest = evidence_dir / fname
+        digest = hashlib.sha256()
 
         # Stream to disk in 16 MB chunks so 10 GB+ images don't buffer in RAM.
         CHUNK = 16 * 1024 * 1024
         size = 0
         try:
-            with open(dest, "wb") as out:
+            with open(dest, "xb") as out:
                 while True:
                     buf = f.stream.read(CHUNK)
                     if not buf:
                         break
                     out.write(buf)
+                    digest.update(buf)
                     size += len(buf)
+            if not size:
+                dest.unlink()
+                evidence_dir.rmdir()
+                return jsonify(error="empty memory image"), 400
+            dest.chmod(0o400)
+            write_json(evidence_dir / "manifest.json", {
+                "evidence_id": evidence_id, "filename": fname,
+                "size": size, "sha256": digest.hexdigest(),
+            })
         except OSError as e:
             # Best-effort cleanup of the partial file so we don't leak space.
             try:
@@ -189,7 +215,8 @@ def create_app(volatility_paths: dict | None = None) -> Flask:
         app.config["LOADED_IMAGE"] = str(dest)
         log.info("Image uploaded: %s (%.2f GB)", dest, size / 1024 / 1024 / 1024)
         return jsonify({"filename": fname, "path": str(dest), "size": size,
-                        "size_human": _human_size(size)})
+                        "size_human": _human_size(size), "evidence_id": evidence_id,
+                        "sha256": digest.hexdigest()})
 
     # ------------------------------------------------------------------
     # Ollama model discovery
@@ -198,9 +225,11 @@ def create_app(volatility_paths: dict | None = None) -> Flask:
     @app.route("/api/ollama/models")
     def ollama_models():
         cfg = load_config()
-        url = cfg.get("ai", {}).get("ollama_url", "http://localhost:11434").rstrip("/")
         try:
-            r = requests.get(f"{url}/api/tags", timeout=1.5)
+            url = checked_endpoint(cfg.get("ai", {}).get("ollama_url", "http://localhost:11434"), "ollama")
+            r = requests.get(f"{url}/api/tags", timeout=1.5, allow_redirects=False)
+            if 300 <= r.status_code < 400:
+                raise PolicyError("AI service redirects are not allowed")
             r.raise_for_status()
             data = r.json()
             names = [m.get("name") for m in data.get("models", []) if m.get("name")]
@@ -262,14 +291,17 @@ def create_app(volatility_paths: dict | None = None) -> Flask:
             out_dir = Path(safe_output_dir(cfg))
             out_dir.mkdir(parents=True, exist_ok=True)
             fmts = cfg.get("output", {}).get("formats", ["txt"])
-            stem = f"{Path(image).stem}_{plugin}_{result.version}"
+            from .evidence import evidence_key
+            run_id = uuid.uuid4().hex
+            stem = f"{evidence_key(image)}_{run_id}_{plugin}_{result.version}"
             if "txt" in fmts:
                 (out_dir / f"{stem}.txt").write_text(result.output)
             if "csv" in fmts and result.format == "csv":
                 (out_dir / f"{stem}.csv").write_text(result.output)
             if "json" in fmts:
                 import json as _json
-                (out_dir / f"{stem}.json").write_text(_json.dumps(result.to_dict(), indent=2))
+                write_json(out_dir / f"{stem}.json", {**result.to_dict(), "image_path": image,
+                    "evidence_key": evidence_key(image), "run_id": run_id})
 
         return jsonify(result.to_dict())
 
@@ -285,11 +317,13 @@ def create_app(volatility_paths: dict | None = None) -> Flask:
             return jsonify({"error": "message required"}), 400
 
         ctx = agent_mod.current_context(app.config)
-        history = agent_mod.load_history()
+        synthesis = body.get("mode") == "synthesis"
+        history = [] if synthesis else agent_mod.load_history()
 
         def sse():
             try:
-                for evt in agent_mod.stream_chat(message, ctx, history):
+                for evt in agent_mod.stream_chat(message, ctx, history,
+                        allow_tools=not synthesis, persist_history=not synthesis):
                     yield f"data: {_json.dumps(evt)}\n\n"
             except Exception as e:
                 log.exception("agent stream crashed")
@@ -319,6 +353,19 @@ def create_app(volatility_paths: dict | None = None) -> Flask:
     def agent_reset():
         agent_mod.reset_history()
         return jsonify({"ok": True})
+
+    @app.route("/api/agent/approve", methods=["POST"])
+    def approve_agent_command():
+        from .command_policy import approve_command
+        body = request.get_json(silent=True) or {}
+        if body.get("approve") is not True:
+            return jsonify(error="explicit approval is required"), 400
+        approval_id = body.get("approval_id")
+        if not isinstance(approval_id, str) or len(approval_id) > 100:
+            return jsonify(error="invalid approval identifier"), 400
+        result = approve_command(approval_id, app.config.get("LOADED_IMAGE"))
+        agent_mod._security_event("APPROVE", result["command"], "one-use browser approval")
+        return jsonify(result)
 
     # ------------------------------------------------------------------
     # File extractor
@@ -385,7 +432,7 @@ def create_app(volatility_paths: dict | None = None) -> Flask:
         if not raw:
             return jsonify({"error": "path required"}), 400
         try:
-            target = Path(raw).resolve()
+            target = checked_path(raw, ("output",), file=True)
         except Exception as e:
             return jsonify({"error": f"bad path: {e}"}), 400
         cfg = load_config()
@@ -396,8 +443,10 @@ def create_app(volatility_paths: dict | None = None) -> Flask:
             abort(403)
         if not target.exists() or not target.is_file():
             return jsonify({"error": "not found"}), 404
-        mt = _mt.guess_type(str(target))[0] or "application/octet-stream"
-        return send_file(str(target), mimetype=mt, conditional=True)
+        mt = file_extractor._sniff_mime(bounded_read(target, 64), "")
+        safe_image = mt in {"image/png", "image/jpeg", "image/gif", "image/webp", "image/bmp", "image/x-icon"}
+        return send_file(str(target), mimetype=mt if safe_image else "application/octet-stream",
+                         as_attachment=not safe_image, conditional=True)
 
     # ------------------------------------------------------------------
     # Results viewer & report generator
@@ -464,7 +513,7 @@ def create_app(volatility_paths: dict | None = None) -> Flask:
         with app.config["_STATUS_LOCK"]:
             app.config["_STATUS"] = {
                 "state": state_, "message": message,
-                "updated": _dt.datetime.utcnow().isoformat(),
+                "updated": _dt.datetime.now(_dt.timezone.utc).isoformat(),
             }
 
     @app.route("/api/status")
@@ -553,8 +602,11 @@ def create_app(volatility_paths: dict | None = None) -> Flask:
         out_dir.mkdir(parents=True, exist_ok=True)
         for name, r in result.get("results", {}).items():
             if r.get("success"):
-                stem = f"{Path(image).stem}_{name}_{r.get('version','auto')}"
-                (out_dir / f"{stem}.json").write_text(_json.dumps(r, indent=2))
+                from .evidence import evidence_key
+                run_id = uuid.uuid4().hex
+                stem = f"{evidence_key(image)}_{run_id}_{name}_{r.get('version','auto')}"
+                write_json(out_dir / f"{stem}.json", {**r, "image_path": image,
+                    "evidence_key": evidence_key(image), "run_id": run_id})
                 if r.get("output"):
                     (out_dir / f"{stem}.txt").write_text(r["output"])
 
@@ -797,124 +849,6 @@ def create_app(volatility_paths: dict | None = None) -> Flask:
             # 503 so the frontend can surface a clean error.
             return jsonify(payload), 503
         return jsonify(payload)
-
-    # ------------------------------------------------------------------
-    # Filesystem browser (used by the Home "Output Directory" picker)
-    # ------------------------------------------------------------------
-    @app.route("/api/fs/browse")
-    def fs_browse():
-        raw = (request.args.get("path") or "").strip()
-        if not raw:
-            raw = str(OUTPUTS_DIR.parent)      # start at the project root
-        try:
-            base = Path(raw).expanduser().resolve()
-        except Exception as e:
-            return jsonify({"error": str(e)}), 400
-        if not base.exists():
-            return jsonify({"error": f"not found: {base}"}), 404
-        if not base.is_dir():
-            return jsonify({"error": f"not a directory: {base}"}), 400
-        try:
-            dirs = []
-            for p in sorted(base.iterdir(), key=lambda x: x.name.lower()):
-                if p.name.startswith(".") and not request.args.get("show_hidden"):
-                    continue
-                try:
-                    if p.is_dir():
-                        dirs.append({"name": p.name, "path": str(p)})
-                except OSError:
-                    continue
-        except PermissionError:
-            return jsonify({"error": f"permission denied: {base}"}), 403
-        parent = str(base.parent) if base != base.parent else None
-        return jsonify({"path": str(base), "parent": parent, "dirs": dirs})
-
-    @app.route("/api/fs/mkdir", methods=["POST"])
-    def fs_mkdir():
-        body = request.get_json(silent=True) or {}
-        path = str(body.get("path") or "").strip()
-        if not path:
-            return jsonify({"error": "path required"}), 400
-        try:
-            p = Path(path).expanduser().resolve()
-            p.mkdir(parents=True, exist_ok=True)
-            return jsonify({"ok": True, "path": str(p)})
-        except Exception as e:
-            return jsonify({"error": str(e)}), 500
-
-    @app.route("/api/fs/pick-dir-native", methods=["POST"])
-    def fs_pick_dir_native():
-        """
-        Pop a native OS folder-picker dialog on the user's desktop and
-        return the selected path. Tries zenity → kdialog → Tkinter in
-        that order; whichever is available wins.
-        """
-        import shutil as _shutil
-        import subprocess as _sp
-        import sys as _sys
-
-        body = request.get_json(silent=True) or {}
-        start = str(body.get("start") or "").strip() or str(Path.home())
-
-        env = os.environ.copy()
-        env.setdefault("DISPLAY", ":0")
-        env.setdefault("XDG_RUNTIME_DIR", f"/run/user/{os.getuid()}")
-
-        # 1. zenity (GTK) — returns path on stdout, exit 0 for OK, 1 for cancel.
-        if _shutil.which("zenity"):
-            try:
-                p = _sp.run(
-                    ["zenity", "--file-selection", "--directory",
-                     f"--filename={start}/", "--title=m3mx — Select Output Directory"],
-                    capture_output=True, text=True, env=env, timeout=600,
-                )
-                if p.returncode == 0:
-                    picked = p.stdout.strip()
-                    return jsonify({"ok": True, "path": picked, "backend": "zenity"})
-                return jsonify({"ok": True, "cancelled": True, "backend": "zenity"})
-            except _sp.TimeoutExpired:
-                return jsonify({"error": "dialog timed out"}), 504
-            except Exception as e:
-                log.warning("zenity failed, falling back: %s", e)
-
-        # 2. kdialog (KDE)
-        if _shutil.which("kdialog"):
-            try:
-                p = _sp.run(
-                    ["kdialog", "--getexistingdirectory", start,
-                     "--title", "m3mx — Select Output Directory"],
-                    capture_output=True, text=True, env=env, timeout=600,
-                )
-                if p.returncode == 0:
-                    return jsonify({"ok": True, "path": p.stdout.strip(), "backend": "kdialog"})
-                return jsonify({"ok": True, "cancelled": True, "backend": "kdialog"})
-            except Exception as e:
-                log.warning("kdialog failed, falling back: %s", e)
-
-        # 3. Tkinter fallback (always available via python3-tk).
-        script = (
-            "import tkinter as tk\n"
-            "from tkinter import filedialog\n"
-            "r = tk.Tk(); r.withdraw(); r.attributes('-topmost', True)\n"
-            f"p = filedialog.askdirectory(initialdir={start!r}, "
-            "title='m3mx — Select Output Directory', mustexist=True)\n"
-            "print(p or '')\n"
-        )
-        try:
-            p = _sp.run([_sys.executable, "-c", script],
-                        capture_output=True, text=True, env=env, timeout=600)
-        except _sp.TimeoutExpired:
-            return jsonify({"error": "dialog timed out"}), 504
-        except Exception as e:
-            return jsonify({"error": str(e)}), 500
-        if p.returncode != 0:
-            return jsonify({
-                "error": (p.stderr.strip() or "Tkinter dialog failed")[:200]
-            }), 500
-        picked = p.stdout.strip()
-        if not picked:
-            return jsonify({"ok": True, "cancelled": True, "backend": "tkinter"})
-        return jsonify({"ok": True, "path": picked, "backend": "tkinter"})
 
     # ------------------------------------------------------------------
     log.info("%s v%s ready. Volatility: %s", __appname__, __version__, app.config["VOLATILITY_PATHS"])

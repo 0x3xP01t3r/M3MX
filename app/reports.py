@@ -29,7 +29,8 @@ from pathlib import Path
 from typing import Iterable
 
 from . import agent as agent_mod
-from .config import OUTPUTS_DIR, load_config
+from .config import OUTPUTS_DIR, load_config, safe_output_dir
+from .security import checked_path, bounded_read, PolicyError
 
 log = logging.getLogger("m3mx.reports")
 
@@ -52,14 +53,14 @@ def _chat_match(name: str) -> bool:
 
 
 def list_outputs(out_dir: Path | str | None = None) -> dict:
-    root = Path(out_dir or OUTPUTS_DIR)
+    root = checked_path(out_dir or OUTPUTS_DIR, ("output",))
     if not root.exists():
         return {c: [] for c in CATEGORIES}
 
     buckets: dict[str, list] = {c: [] for c in CATEGORIES}
 
     for p in root.iterdir():
-        if p.is_file():
+        if p.is_file() and not p.is_symlink() and not p.name.startswith("."):
             meta = _meta(p)
             if _report_match(p.name):
                 buckets["reports"].append(meta)
@@ -72,11 +73,15 @@ def list_outputs(out_dir: Path | str | None = None) -> dict:
 
     # Extracted files
     extracted = root / "extracted"
-    if extracted.exists():
-        for p in sorted(extracted.iterdir()):
-            if p.is_file():
+    if extracted.exists() and not extracted.is_symlink():
+        for p in sorted(extracted.rglob("*")):
+            if p.is_file() and not p.is_symlink() and not any(part.startswith(".") for part in p.relative_to(root).parts):
+                try:
+                    checked_path(p, ("output",), file=True)
+                except PolicyError:
+                    continue
                 meta = _meta(p)
-                meta["relpath"] = f"extracted/{p.name}"
+                meta["relpath"] = str(p.relative_to(root))
                 buckets["files"].append(meta)
 
     for c in buckets:
@@ -101,17 +106,18 @@ def _meta(p: Path) -> dict:
 
 def resolve_output_path(name: str, out_dir: Path | str | None = None) -> Path | None:
     """Resolve a name (possibly 'extracted/foo') safely inside out_dir."""
-    root = Path(out_dir or OUTPUTS_DIR).resolve()
-    cand = (root / name).resolve()
     try:
+        root = checked_path(out_dir or OUTPUTS_DIR, ("output",))
+        cand = checked_path(root / name, ("output",), file=True)
         cand.relative_to(root)
-    except ValueError:
+    except (ValueError, OSError):
         return None
     return cand if cand.exists() and cand.is_file() else None
 
 
 def read_text(p: Path, max_bytes: int = 500_000) -> dict:
-    data = p.read_bytes()[:max_bytes]
+    max_bytes = max(1, min(int(max_bytes), 512 * 1024))
+    data = bounded_read(p, max_bytes)
     binary = _looks_binary(data)
     if binary:
         return {"binary": True, "hex": _hex_preview(data, 4096),
@@ -175,18 +181,27 @@ Summary (top rows per plugin):
 """
 
 
-def _gather_summary(out_dir: Path, max_plugins: int = 15, rows_per_plugin: int = 10) -> tuple[list[str], dict]:
+def _gather_summary(out_dir: Path, max_plugins: int = 15, rows_per_plugin: int = 10,
+                    image_path: str | None = None) -> tuple[list[str], dict]:
     """Collect plugin JSON outputs and condense them."""
     plugins_run = []
     summary = {}
 
     jsons = sorted(out_dir.glob("*_v[23].json"), key=lambda p: p.stat().st_mtime, reverse=True)
-    for p in jsons[:max_plugins]:
+    for p in jsons:
+        if len(plugins_run) >= max_plugins:
+            break
         try:
             d = json.loads(p.read_text())
         except Exception:
             continue
+        if image_path:
+            from .evidence import evidence_key
+            if d.get("evidence_key") != evidence_key(image_path):
+                continue
         plugin = d.get("plugin") or p.stem
+        if plugin in summary:
+            continue
         plugins_run.append(plugin)
 
         entry = {
@@ -214,10 +229,10 @@ def generate_report(image_path: str | None = None, provider: str | None = None) 
         {"markdown": "...", "files": {"md": path, "pdf": path, "docx": path}}
     """
     cfg = load_config()
-    out_dir = Path(cfg.get("output", {}).get("directory") or OUTPUTS_DIR)
+    out_dir = Path(safe_output_dir(cfg))
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    plugins_run, summary = _gather_summary(out_dir)
+    plugins_run, summary = _gather_summary(out_dir, image_path=image_path)
     if not plugins_run:
         return {"error": "No plugin JSON outputs found. Run some plugins first."}
 
@@ -243,7 +258,7 @@ def generate_report(image_path: str | None = None, provider: str | None = None) 
     collected = ""
     last_error = None
     last_model = None
-    for evt in agent_mod.stream_chat(prompt, ctx, history=None):
+    for evt in agent_mod.stream_chat(prompt, ctx, history=None, allow_tools=False, persist_history=False):
         if evt["type"] == "token":
             collected += evt["content"]
         elif evt["type"] == "done":
@@ -303,10 +318,10 @@ def _write_pdf(markdown_text: str, path: Path,
     story = []
     story.append(Paragraph("m3mx tool — Memory Forensics Report", h1))
     story.append(Paragraph(
-        f"Image: {image_path or '(unknown)'}<br/>"
+        f"Image: {_escape_rl(image_path or '(unknown)')}<br/>"
         f"Generated: {datetime.datetime.now().isoformat(timespec='seconds')}<br/>"
-        f"Model: {model or '(unknown)'}<br/>"
-        f"Plugins: {', '.join(plugins)}",
+        f"Model: {_escape_rl(model or '(unknown)')}<br/>"
+        f"Plugins: {_escape_rl(', '.join(plugins))}",
         meta,
     ))
     story.append(Spacer(1, 0.25 * inch))

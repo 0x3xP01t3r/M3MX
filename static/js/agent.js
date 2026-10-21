@@ -228,7 +228,7 @@
     window.m3mx.setStatus("analyzing", "agent");
 
     try {
-      const res = await fetch("/api/agent/chat", {
+      const res = await m3mxFetch("/api/agent/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ message }),
@@ -356,7 +356,7 @@
     });
 
     // Load history
-    fetch("/api/agent/history").then(r => r.json()).then(d => {
+    m3mxFetch("/api/agent/history").then(r => r.json()).then(d => {
       const h = d.history || [];
       if (h.length) {
         // Replace welcome message with real history
@@ -375,7 +375,7 @@
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "l"
           && $(".panel.active")?.dataset.panel === "agent") {
         e.preventDefault();
-        fetch("/api/agent/reset", { method: "POST" })
+        m3mxFetch("/api/agent/reset", { method: "POST" })
           .then(() => {
             const inner = $("#chat-inner");
             if (inner) inner.innerHTML = "";

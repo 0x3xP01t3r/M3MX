@@ -473,11 +473,12 @@ def markdown_to_html(md_text: str,
     ``extra``, ``tables``, and ``toc`` extensions enabled so GFM-style
     tables render correctly.
     """
-    inner = _markdown.markdown(
+    from ..pdf_renderer import clean_report_html
+    inner = clean_report_html(_markdown.markdown(
         md_text or "",
         extensions=["extra", "tables", "toc", "sane_lists"],
         output_format="html5",
-    )
+    ))
     return _HTML_TEMPLATE.format(title=_h(title or _REPORT_TITLE),
                                  content=inner)
 
@@ -523,7 +524,8 @@ def html_to_pdf(html_text: str, target: str | Path) -> tuple[bool, str | None]:
     try:
         out_path = Path(target)
         out_path.parent.mkdir(parents=True, exist_ok=True)
-        weasyprint.HTML(string=html_text).write_pdf(str(out_path))
+        from ..pdf_renderer import render_pdf
+        render_pdf(html_text, out_path)
         return True, None
     except Exception as e:                                        # pragma: no cover
         log.warning("PDF rendering failed: %s", e)
@@ -545,7 +547,7 @@ def build_and_persist(case_dir: str | Path,
     list to be present.
     """
     outputs = load_case_outputs(case_dir)
-    if not outputs.has_findings:
+    if not outputs.has_findings_file:
         raise FileNotFoundError(
             f"findings.jsonl is missing in {outputs.case_dir or case_dir!s} "
             "— run Full Analysis first"

@@ -400,6 +400,13 @@
           "desc": "Extract cached files from memory."
         },
         {
+          "name": "mftparser",
+          "vol3": null,
+          "vol2": "mftparser",
+          "format": "csv",
+          "desc": "Volatility 2: scan and parse NTFS Master File Table records, filenames, and timestamps."
+        },
+        {
           "name": "mftscan",
           "vol3": "windows.mftscan.MFTScan",
           "vol2": "mftparser",

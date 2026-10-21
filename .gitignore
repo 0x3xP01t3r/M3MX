@@ -4,6 +4,13 @@ __pycache__/
 *.pyo
 *.pyd
 .venv/
+.venv-*/
+.m3mx/
+state/
+.pytest_cache/
+.coverage
+htmlcov/
+playwright-report/
 venv/
 env/
 
@@ -12,6 +19,7 @@ env/
 *.key
 *.pem
 config.json
+!config.example.json
 
 # M3MX local data
 uploads/
