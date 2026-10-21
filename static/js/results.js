@@ -34,7 +34,7 @@
   // ------------------------------------------------------------------
   async function refresh() {
     try {
-      const d = await fetch("/api/outputs").then(r => r.json());
+      const d = await m3mxFetch("/api/outputs").then(r => r.json());
       state.categories = d.categories || { plugins: [], files: [], chats: [], reports: [] };
       state.outputDir  = d.output_dir || "";
 
@@ -99,7 +99,7 @@
     pane.innerHTML = `<div class="running-banner"><span class="spinner"></span> loading ${escapeHtml(name)}…</div>`;
 
     try {
-      const d = await fetch(`/api/outputs/view?name=${encodeURIComponent(name)}`).then(r => r.json());
+      const d = await m3mxFetch(`/api/outputs/view?name=${encodeURIComponent(name)}`).then(r => r.json());
       if (d.error) throw new Error(d.error);
 
       const ext = (name.split(".").pop() || "").toLowerCase();
@@ -137,7 +137,7 @@
   async function remove(name) {
     if (!confirm(`Delete ${name}?`)) return;
     try {
-      const r = await fetch("/api/outputs/delete", {
+      const r = await m3mxFetch("/api/outputs/delete", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name }),
@@ -160,7 +160,7 @@
     const btn = $("#btn-gen-report"); btn.disabled = true;
 
     try {
-      const r = await fetch("/api/reports/generate", { method: "POST" });
+      const r = await m3mxFetch("/api/reports/generate", { method: "POST" });
       const d = await r.json();
       if (d.error) throw new Error(d.error);
 

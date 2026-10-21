@@ -14,6 +14,9 @@ import logging
 import re
 import shutil
 import subprocess
+import uuid
+from .security import checked_path, bounded_read
+from .processes import run_command
 import time
 from dataclasses import asdict, dataclass
 from pathlib import Path
@@ -177,7 +180,10 @@ def extract_files(image_path: str, offsets: list[str], output_dir: str | Path,
     """
     vol3 = vol_paths.get("vol3")
     vol2 = vol_paths.get("vol2")
-    out = Path(output_dir) / "extracted"
+    from .evidence import evidence_key
+    image_path = str(checked_path(image_path, ("evidence",), file=True))
+    out = checked_path(Path(output_dir) / "extracted" / evidence_key(image_path) / uuid.uuid4().hex,
+                       ("output",), must_exist=False)
     out.mkdir(parents=True, exist_ok=True)
 
     results = []
@@ -187,7 +193,7 @@ def extract_files(image_path: str, offsets: list[str], output_dir: str | Path,
 
     if vol3:
         for off in offsets:
-            off = off.strip()
+            off = str(off).strip()
             if not re.fullmatch(r"0x[0-9a-fA-F]+", off):
                 results.append({"offset": off, "ok": False,
                                 "error": "invalid offset format", "dumped": []})
@@ -248,7 +254,7 @@ def extract_files(image_path: str, offsets: list[str], output_dir: str | Path,
         # gets a real --profile= instead of vol2's WinXPSP2x86 fallback.
         profile = forensics.ensure_profile(image_path, vol2, timeout=timeout)
         for off in offsets:
-            off = off.strip()
+            off = str(off).strip()
             if not re.fullmatch(r"0x[0-9a-fA-F]+", off):
                 results.append({"offset": off, "ok": False,
                                 "error": "invalid offset format", "dumped": []})
@@ -334,7 +340,9 @@ def preview_offset(image_path: str, offset: str, output_dir: str | Path,
 
     target = candidates[0]
     size_total = target.stat().st_size
-    data = target.read_bytes()[:byte_limit]
+    from .security import bounded_read, checked_path
+    target = checked_path(target, ("output",), file=True)
+    data = bounded_read(target, byte_limit)
 
     # Build hex rows (16 bytes / row)
     hex_rows = []
@@ -425,9 +433,9 @@ def _exif_dump(target: Path) -> list[dict]:
     if not shutil.which("exiftool"):
         return []
     try:
-        proc = subprocess.run(
+        proc = run_command(
             ["exiftool", "-j", "-short", "-fast", "-m", "-q", str(target)],
-            capture_output=True, text=True, timeout=20, errors="replace",
+            timeout=20, max_bytes=256 * 1024,
         )
     except Exception as e:
         log.warning("exiftool failed: %s", e)
@@ -455,12 +463,12 @@ def _exif_dump(target: Path) -> list[dict]:
 
 def _run(cmd: list[str], timeout: int, cwd: str | None = None) -> dict:
     import os as _os
-    env = _os.environ.copy()
+    from .processes import child_environment
+    env = child_environment()
     env["VOL3_ALLOW_PARTIAL_DUMP"] = "1"
     log.info("extract: %s  (cwd=%s)", " ".join(cmd), cwd or ".")
     try:
-        proc = subprocess.run(cmd, capture_output=True, text=True,
-                              timeout=timeout, errors="replace", cwd=cwd, env=env)
+        proc = run_command(cmd, timeout=timeout, cwd=cwd, env=env)
         return {
             "ok":    proc.returncode == 0,
             "out":   proc.stdout,

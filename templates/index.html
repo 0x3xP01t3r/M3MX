@@ -3,10 +3,10 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<meta name="m3mx-token" content="{{ request_token }}"/>
 <title>{{ app_name }} — Memory Forensics</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;500;600;700;800&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer"/>
+<link rel="stylesheet" href="{{ url_for('static', filename='vendor/fonts/fonts.css') }}"/>
+<link rel="stylesheet" href="{{ url_for('static', filename='vendor/fontawesome/css/all.min.css') }}"/>
 <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}"/>
 </head>
 <body>
@@ -58,8 +58,8 @@
       </div>
     </div>
     <div class="ts-right">
-      <button class="ts-btn rel" id="alertBtn" onclick="toggleAlerts()">
-      <button class="ts-btn" onclick="toggleTheme()">
+      <button class="ts-btn rel" id="alertBtn" data-click="action-1">
+      <button class="ts-btn" data-click="action-2">
         <svg id="themeIco" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" width="15" height="15"><circle cx="10" cy="10" r="4"/><line x1="10" y1="1" x2="10" y2="3"/><line x1="10" y1="17" x2="10" y2="19"/><line x1="1" y1="10" x2="3" y2="10"/><line x1="17" y1="10" x2="19" y2="10"/><line x1="3.5" y1="3.5" x2="5" y2="5"/><line x1="15" y1="15" x2="16.5" y2="16.5"/><line x1="3.5" y1="16.5" x2="5" y2="15"/><line x1="15" y1="5" x2="16.5" y2="3.5"/></svg>
       </button>
       <div class="user-orb">AN</div>
@@ -68,7 +68,7 @@
 
   <!-- ALERT DRAWER -->
   <div class="alert-drawer hidden" id="alertDrawer">
-    <div class="ad-hd"><span>Threat Alerts</span><button onclick="clearAlerts()">Clear all</button></div>
+    <div class="ad-hd"><span>Threat Alerts</span><button data-click="action-3">Clear all</button></div>
     <div id="alertList">
       <div style="padding:14px;color:var(--t2);font-family:var(--fm);font-size:.7rem">No alerts yet — run an analysis to populate.</div>
     </div>
@@ -76,13 +76,13 @@
 
   <!-- PILL NAV -->
   <div class="pill-nav" id="pillNav">
-    <button class="pn-btn active" onclick="navigateTo('home')" title="Home"><i class="fa-solid fa-house"></i><span>Home</span></button>
-    <button class="pn-btn" onclick="navigateTo('full')" title="Full Analysis"><i class="fa-solid fa-shield-virus"></i><span>Analysis</span></button>
-    <button class="pn-btn" onclick="navigateTo('manual')" title="Manual Mode"><i class="fa-solid fa-terminal"></i><span>Manual</span></button>
-    <button class="pn-btn" onclick="navigateTo('automation')" title="Automation"><i class="fa-solid fa-bolt"></i><span>Auto</span></button>
-    <button class="pn-btn" onclick="navigateTo('extractor')" title="Extractor"><i class="fa-solid fa-folder-open"></i><span>Extractor</span></button>
-    <button class="pn-btn" onclick="navigateTo('ai')" title="AI Agent"><i class="fa-solid fa-robot"></i><span>Agent</span></button>
-    <button class="pn-btn" onclick="navigateTo('settings')" title="Settings"><i class="fa-solid fa-gear"></i><span>Settings</span></button>
+    <button class="pn-btn active" data-click="action-4" data-view="home" title="Home"><i class="fa-solid fa-house"></i><span>Home</span></button>
+    <button class="pn-btn" data-click="action-5" data-view="full" title="Full Analysis"><i class="fa-solid fa-shield-virus"></i><span>Analysis</span></button>
+    <button class="pn-btn" data-click="action-6" data-view="manual" title="Manual Mode"><i class="fa-solid fa-terminal"></i><span>Manual</span></button>
+    <button class="pn-btn" data-click="action-7" data-view="automation" title="Automation"><i class="fa-solid fa-bolt"></i><span>Auto</span></button>
+    <button class="pn-btn" data-click="action-8" data-view="extractor" title="Extractor"><i class="fa-solid fa-folder-open"></i><span>Extractor</span></button>
+    <button class="pn-btn" data-click="action-9" data-view="ai" title="AI Agent"><i class="fa-solid fa-robot"></i><span>Agent</span></button>
+    <button class="pn-btn" data-click="action-10" data-view="settings" title="Settings"><i class="fa-solid fa-gear"></i><span>Settings</span></button>
   </div>
 
   <!-- MAIN STAGE -->
@@ -105,10 +105,10 @@
             </p>
 
             <div class="hero-cta-row">
-              <button class="cta-main" onclick="document.getElementById('fileInput').click()">
+              <button class="cta-main" data-click="action-11">
                 <i class="fa-solid fa-shield-virus"></i> Launch End-to-End Analysis
               </button>
-              <button class="cta-sec" onclick="loadDemo()">
+              <button class="cta-sec" data-click="action-12">
                 <i class="fa-solid fa-graduation-cap"></i> Demo Image
               </button>
             </div>
@@ -246,7 +246,7 @@
           </div>
 
           <!-- Drag & Drop Zone -->
-          <div class="drop-zone" id="drop-zone" onclick="document.getElementById('fileInput').click()">
+          <div class="drop-zone" id="drop-zone" data-click="action-13">
             <div class="drop-zone-inner">
               <div class="drop-zone-icon">
                 <i class="fa-solid fa-memory"></i>
@@ -256,7 +256,7 @@
               <p class="drop-zone-hint">.raw · .mem · .dmp · .vmem · .lime · .img · .bin</p>
               <p class="drop-zone-hint" style="opacity:.55;font-size:.68rem;margin-top:2px">up to 10 GB accepted</p>
             </div>
-            <input type="file" id="fileInput" accept=".raw,.mem,.dmp,.img,.vmem,.bin,.lime" style="display:none" onchange="handleFile(event)">
+            <input type="file" id="fileInput" accept=".raw,.mem,.dmp,.img,.vmem,.bin,.lime" style="display:none" data-change="action-14">
           </div>
 
           <!-- Output dir + Save -->
@@ -289,10 +289,10 @@
           </div>
 
           <div class="action-row">
-            <button class="cta-main full-w" id="start-analysis-btn" onclick="navigateTo('full')">
+            <button class="cta-main full-w" id="start-analysis-btn" data-click="action-15" data-view="full">
               <i class="fa-solid fa-play"></i> Run Full Analysis
             </button>
-            <button class="cta-sec full-w" style="margin-top:8px" onclick="navigateTo('manual')">
+            <button class="cta-sec full-w" style="margin-top:8px" data-click="action-16" data-view="manual">
               <i class="fa-solid fa-terminal"></i> Open Manual Mode
             </button>
           </div>
@@ -314,7 +314,7 @@
           <button class="ghost-btn" id="fa-export-btn" disabled>
             <i class="fa-solid fa-download"></i> Export
           </button>
-          <button class="cta-main sm" id="fa-start-btn" onclick="runFullSuite()">
+          <button class="cta-main sm" id="fa-start-btn" data-click="action-17">
             <i class="fa-solid fa-rocket"></i> Start Full Analysis
           </button>
         </div>
@@ -418,7 +418,7 @@
           <div id="fa2-report-links" class="fa2-link-row fa2-empty-inline">Report links appear after report generation.</div>
           <div id="fa2-pdf-export-section" style="margin-top:14px">
             <button class="cta-main sm" id="fa2-pdf-export-btn" disabled
-                    onclick="exportReportPdf()" type="button"
+                    data-click="action-18" type="button"
                     title="Run Full Analysis first.">
               <i class="fa-solid fa-file-pdf"></i> Download PDF Report
             </button>
@@ -426,7 +426,7 @@
           </div>
           <div id="fa2-ai-report-section" style="margin-top:14px;display:none">
             <button class="cta-main sm" id="fa2-ai-report-btn" disabled
-                    onclick="runAIReport()" type="button"
+                    data-click="action-19" type="button"
                     title="Run Full Analysis first before generating an AI Report.">
               <i class="fa-solid fa-wand-magic-sparkles"></i> Generate AI Report
             </button>
@@ -513,7 +513,7 @@
           <div style="padding:16px;border-bottom:1px solid var(--border)">
             <div class="search-wrap" style="width:100%;border:none;padding:0;background:transparent">
               <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" width="14" height="14"><circle cx="6" cy="6" r="5"/><line x1="10" y1="10" x2="14" y2="14"/></svg>
-              <input type="text" placeholder="Search plugins..." oninput="filterPlugins(this.value)" id="pSearch" style="width:100%;font-size:.8rem"/>
+              <input type="text" placeholder="Search plugins..." data-input="action-20" id="pSearch" style="width:100%;font-size:.8rem"/>
             </div>
           </div>
           <div id="pluginCatHeader" style="padding:16px 16px 8px 16px;font-family:var(--fc);font-size:.6rem;color:var(--t2);font-weight:700;letter-spacing:.1em;text-transform:uppercase">
@@ -529,7 +529,7 @@
                 <h3 id="rfName" style="font-family:var(--fm);font-size:1.1rem;color:var(--t0);font-weight:700;margin-bottom:8px">Select a plugin</h3>
                 <p id="rfDesc" style="font-family:var(--fm);font-size:.75rem;color:var(--t2)">Pick a plugin from the left panel.</p>
               </div>
-              <button class="cta-main" id="run-plugin-btn" onclick="execPlugin()" style="background:#6366f1;border-radius:6px;padding:10px 20px" disabled>
+              <button class="cta-main" id="run-plugin-btn" data-click="action-21" style="background:#6366f1;border-radius:6px;padding:10px 20px" disabled>
                 <i class="fa-solid fa-play" style="font-size:.8rem"></i> Run Plugin
               </button>
             </div>
@@ -658,7 +658,7 @@
         </div>
         <div style="display:flex;gap:12px">
           <button class="ghost-btn" id="ext-refresh-btn"><i class="fa-solid fa-arrows-rotate"></i> Refresh</button>
-          <button class="cta-main" id="extract-selected-btn" onclick="extractSelected()" style="background:#6366f1;border-color:#6366f1" disabled><i class="fa-solid fa-file-export"></i> Extract Selected</button>
+          <button class="cta-main" id="extract-selected-btn" data-click="action-22" style="background:#6366f1;border-color:#6366f1" disabled><i class="fa-solid fa-file-export"></i> Extract Selected</button>
         </div>
       </div>
 
@@ -689,11 +689,11 @@
 
         <div class="ext-detail-pane" id="extDetailPane">
           <div class="ext-tabs">
-            <button class="ext-tab active" onclick="switchTab(this,'metadata')">Metadata</button>
-            <button class="ext-tab" onclick="switchTab(this,'hex')">Hex View</button>
-            <button class="ext-tab" onclick="switchTab(this,'strings')">Strings</button>
-            <button class="ext-tab" onclick="switchTab(this,'exif')">Exif</button>
-            <button class="ext-tab"  id="ext-tab-image" onclick="switchTab(this,'image')" disabled>Image</button>
+            <button class="ext-tab active" data-click="action-23">Metadata</button>
+            <button class="ext-tab" data-click="action-24">Hex View</button>
+            <button class="ext-tab" data-click="action-25">Strings</button>
+            <button class="ext-tab" data-click="action-26">Exif</button>
+            <button class="ext-tab"  id="ext-tab-image" data-click="action-27" disabled>Image</button>
           </div>
           <div class="ext-empty" id="extEmpty">
             <svg viewBox="0 0 48 56" fill="none" stroke="currentColor" stroke-width="1" width="52" height="52" opacity=".18"><path d="M28 2H8a2 2 0 00-2 2v48a2 2 0 002 2h32a2 2 0 002-2V16z"/><polyline points="28,2 28,16 40,16"/><circle cx="32" cy="38" r="8"/><line x1="38" y1="44" x2="44" y2="50"/></svg>
@@ -712,7 +712,7 @@
             <div class="str-toolbar">
               <span class="str-count" id="strCount">0 strings found</span>
               <div class="str-filter-wrap">
-                <input type="text" id="strFilter" placeholder="Filter strings..." oninput="filterStrings(this.value)" class="str-filter-input"/>
+                <input type="text" id="strFilter" placeholder="Filter strings..." data-input="action-28" class="str-filter-input"/>
               </div>
             </div>
             <div class="str-body" id="strBody"></div>
@@ -721,7 +721,7 @@
             <div class="exif-toolbar">
               <span class="exif-count" id="exifCount">0 fields</span>
               <div class="str-filter-wrap">
-                <input type="text" id="exifFilter" placeholder="Filter exif…" oninput="filterExif(this.value)" class="str-filter-input"/>
+                <input type="text" id="exifFilter" placeholder="Filter exif…" data-input="action-29" class="str-filter-input"/>
               </div>
             </div>
             <div class="exif-body" id="exifBody"></div>
@@ -752,14 +752,14 @@
             </div>
           </div>
           <div class="chat-chips">
-            <button class="chip" onclick="chipSend(this)">Suspicious processes?</button>
-            <button class="chip" onclick="chipSend(this)">External network connections</button>
-            <button class="chip" onclick="chipSend(this)">Malware injection signatures</button>
-            <button class="chip" onclick="chipSend(this)">Hidden processes</button>
+            <button class="chip" data-click="action-30">Suspicious processes?</button>
+            <button class="chip" data-click="action-31">External network connections</button>
+            <button class="chip" data-click="action-32">Malware injection signatures</button>
+            <button class="chip" data-click="action-33">Hidden processes</button>
           </div>
           <div class="chat-bar">
-            <input class="cb-in" id="cbInput" placeholder="Ask the agent..." onkeydown="cbKey(event)"/>
-            <button class="cb-send" onclick="sendMsg()"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" width="13"><line x1="14" y1="2" x2="7" y2="9"/><polygon points="14,2 9,15 7,9 1,7"/></svg></button>
+            <input class="cb-in" id="cbInput" placeholder="Ask the agent..." data-keydown="action-34"/>
+            <button class="cb-send" data-click="action-35"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" width="13"><line x1="14" y1="2" x2="7" y2="9"/><polygon points="14,2 9,15 7,9 1,7"/></svg></button>
           </div>
         </div>
         <div class="ai-info-pane">
@@ -792,7 +792,7 @@
     <div class="scene" id="scene-settings">
       <div class="scene-hd">
         <div><span class="sh-ey">PLATFORM CONFIG</span><h2 class="sh-ttl">Settings</h2></div>
-        <button class="cta-main sm" id="save-settings-btn" onclick="saveSettings()">Save Changes</button>
+        <button class="cta-main sm" id="save-settings-btn" data-click="action-36">Save Changes</button>
       </div>
       <div class="settings-grid">
 
@@ -812,7 +812,7 @@
             <div class="sg-r"><label>Directory</label><input class="mono-input" id="output-directory" value="/home/kali/M3MX.tool/m3mx-tool/outputs"/></div>
             <div class="sg-r tog">
               <label>Auto-save</label>
-              <div class="tog on" id="output-autosave" onclick="this.classList.toggle('on')"><span></span></div>
+              <div class="tog on" id="output-autosave" data-click="action-37"><span></span></div>
             </div>
           </div>
         </div>
@@ -836,8 +836,12 @@
             <div class="sg-r"><label>Max tokens</label><input class="mono-input" id="ai-max-tokens" type="number" value="1500"/></div>
             <div class="sg-r"><label>Temperature</label><input class="mono-input" id="ai-temperature" type="number" step="0.1" min="0" max="2" value="0.2"/></div>
             <div class="sg-r tog">
-              <label>Allow shell tools</label>
-              <div class="tog on" id="ai-allow-shell" onclick="this.classList.toggle('on')"><span></span></div>
+              <label>Allow read-only command proposals</label>
+              <div class="tog" id="ai-allow-shell" data-click="action-38"><span></span></div>
+            </div>
+            <div class="sg-r tog">
+              <label>Allow external OSINT lookups</label>
+              <div class="tog" id="ai-allow-network" data-click="action-38"><span></span></div>
             </div>
           </div>
         </div>
@@ -855,15 +859,15 @@
           <div class="sg-rows">
             <div class="sg-r tog">
               <label>Optional AI Report <span class="tog-badge warn">⚠ AI</span></label>
-              <div class="tog" id="fa-optional-ai-report" onclick="this.classList.toggle('on')"><span></span></div>
+              <div class="tog" id="fa-optional-ai-report" data-click="action-39"><span></span></div>
             </div>
             <div class="sg-r tog">
               <label>Legacy V1 fallback</label>
-              <div class="tog" id="fa-legacy-v1" onclick="this.classList.toggle('on')"><span></span></div>
+              <div class="tog" id="fa-legacy-v1" data-click="action-40"><span></span></div>
             </div>
             <div class="sg-r tog">
               <label>V2 pipeline (default)</label>
-              <div class="tog on" id="fa-v2-enabled" onclick="this.classList.toggle('on')"><span></span></div>
+              <div class="tog on" id="fa-v2-enabled" data-click="action-41"><span></span></div>
             </div>
           </div>
         </div>
@@ -871,18 +875,18 @@
         <div class="sg-b">
           <div class="sg-lbl">Interface</div>
           <div class="sg-rows">
-            <div class="sg-r"><label>Theme</label><select class="mono-input" id="theme-select" onchange="setTheme(this.value)"><option value="dark">Dark — Obsidian</option><option value="light">Light — Sterile</option></select></div>
+            <div class="sg-r"><label>Theme</label><select class="mono-input" id="theme-select" data-change="action-42"><option value="dark">Dark — Obsidian</option><option value="light">Light — Sterile</option></select></div>
             <div class="sg-r tog">
               <label>Ambient particle field</label>
-              <div class="tog on" onclick="toggleParticles(this)"><span></span></div>
+              <div class="tog on" data-click="action-43"><span></span></div>
             </div>
             <div class="sg-r tog">
               <label>Film-grain overlay</label>
-              <div class="tog" onclick="toggleGrain(this)"><span></span></div>
+              <div class="tog" data-click="action-44"><span></span></div>
             </div>
             <div class="sg-r tog">
               <label>Interface animations</label>
-              <div class="tog on" onclick="this.classList.toggle('on')"><span></span></div>
+              <div class="tog on" data-click="action-45"><span></span></div>
             </div>
           </div>
         </div>
@@ -893,6 +897,12 @@
 </div>
 
 <div id="toasts"></div>
+<script src="{{ url_for('static', filename='js/requests.js') }}"></script>
+<script src="{{ url_for('static', filename='js/core.js') }}"></script>
+<script src="{{ url_for('static', filename='js/agent-ui.js') }}"></script>
+<script src="{{ url_for('static', filename='js/analysis-ui.js') }}"></script>
+<script src="{{ url_for('static', filename='js/extractor-ui.js') }}"></script>
 <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+<script src="{{ url_for('static', filename='js/events.js') }}"></script>
 </body>
 </html>

@@ -19,6 +19,9 @@ from threading import RLock
 from typing import Optional
 
 from .plugins import find_plugin, flat_plugins
+from .security import checked_path, PolicyError
+from .evidence import image_identity
+from .processes import run_command, child_environment
 
 
 def _vol_env() -> dict:
@@ -28,7 +31,7 @@ def _vol_env() -> dict:
     truncated/partial memory dumps (the standard 280 MB-class snapshots
     that fail validation on stock Vol3).
     """
-    env = os.environ.copy()
+    env = child_environment()
     env["VOL3_ALLOW_PARTIAL_DUMP"] = "1"
     return env
 
@@ -39,7 +42,7 @@ _cache: dict[tuple, "PluginResult"] = {}
 _cache_lock = RLock()
 
 # Cache the detected OS profile per image
-_profile_cache: dict[str, str] = {}
+_profile_cache: dict[tuple, str] = {}
 
 
 @dataclass
@@ -65,13 +68,42 @@ class PluginResult:
 
 def detect_volatility() -> dict:
     vol3 = next((shutil.which(x) for x in ("vol", "volatility3", "vol3") if shutil.which(x)), None)
-    vol2 = next((shutil.which(x) for x in ("vol.py", "volatility", "volatility2") if shutil.which(x)), None)
+    vol2 = next((shutil.which(x) for x in ("vol2", "vol.py", "volatility", "volatility2") if shutil.which(x)), None)
+    bundled = Path(__file__).resolve().parent.parent / "bin" / "vol2"
+    if not vol2 and shutil.which("python2") and bundled.is_file():
+        vol2 = str(bundled)
     return {"vol2": vol2, "vol3": vol3}
 
 
 # ---------------------------------------------------------------------------
 # Command construction
 # ---------------------------------------------------------------------------
+
+def validate_extra_args(args: list[str]) -> list[str]:
+    """Plugin options cannot select executables, input layers, or write paths."""
+    allowed_numbers = {"--pid", "--offset", "--physaddr", "--virtaddr", "--address"}
+    allowed_flags = {"--dump"}
+    result = []
+    i = 0
+    while i < len(args):
+        key, sep, value = args[i].partition("=")
+        if key in allowed_flags and not sep:
+            # Dump plugins need an application-controlled output directory.
+            raise PolicyError("use File Extractor to create dumps in a controlled output directory")
+        if key not in allowed_numbers | {"--yara-file"}:
+            raise PolicyError(f"plugin option is not approved: {key}")
+        if not sep:
+            i += 1
+            if i >= len(args):
+                raise PolicyError(f"missing value for {key}")
+            value = args[i]
+        if key == "--yara-file":
+            value = str(checked_path(value, ("rules",), file=True))
+        elif not re.fullmatch(r"(?:0x[0-9a-fA-F]+|[0-9]+)(?:,(?:0x[0-9a-fA-F]+|[0-9]+))*", value):
+            raise PolicyError(f"invalid numeric value for {key}")
+        result.append(f"{key}={value}")
+        i += 1
+    return result
 
 def _build_v3_cmd(vol_bin: str, image: str, plugin_v3: str, fmt: str,
                   extra_args: list[str] | None = None) -> list[str]:
@@ -89,16 +121,14 @@ def _detect_v2_profile(vol_bin: str, image: str, timeout: int = 600) -> str | No
     profile so subsequent Vol2 plugin calls get a correct --profile=.
     Returns the profile string, or None if detection failed.
     """
-    cached = _profile_cache.get(image)
+    cached = _profile_cache.get(image_identity(image))
     if cached:
         return cached
     cmd = ["python2", vol_bin] if vol_bin.endswith(".py") else [vol_bin]
     cmd += ["-f", image, "imageinfo"]
     log.info("auto-detecting Vol2 profile: %s", " ".join(cmd))
     try:
-        proc = subprocess.run(cmd, capture_output=True, text=True,
-                              timeout=timeout, errors="replace",
-                              env=_vol_env())
+        proc = run_command(cmd, timeout=timeout, env=_vol_env())
     except subprocess.TimeoutExpired:
         log.warning("imageinfo timed out after %ss", timeout)
         return None
@@ -109,7 +139,7 @@ def _detect_v2_profile(vol_bin: str, image: str, timeout: int = 600) -> str | No
         if "Suggested Profile(s)" in line:
             prof = line.split(":", 1)[-1].strip().split(",")[0].strip()
             if prof:
-                _profile_cache[image] = prof
+                _profile_cache[image_identity(image)] = prof
                 log.info("auto-cached Vol2 profile %s for %s", prof, image)
                 return prof
     log.warning("imageinfo produced no suggested profile (returncode=%s)",
@@ -175,7 +205,10 @@ def run_plugin(image_path: str | Path,
         profile: vol2 profile string (optional)
         use_cache: reuse previous identical run
     """
-    image = str(Path(image_path).resolve())
+    try:
+        image = str(checked_path(image_path, ("evidence",), file=True))
+    except (PolicyError, OSError) as exc:
+        return PluginResult(success=False, error=str(exc), plugin=plugin)
     meta = find_plugin(plugin)
     if not meta:
         return PluginResult(success=False, error=f"Unknown plugin '{plugin}'", plugin=plugin)
@@ -203,7 +236,11 @@ def run_plugin(image_path: str | Path,
             plugin=plugin, format=fmt,
         )
 
-    cache_key = (image, plugin, chosen, fmt, tuple(extra_args or []))
+    try:
+        extra_args = validate_extra_args(extra_args or [])
+    except (PolicyError, ValueError) as exc:
+        return PluginResult(success=False, error=str(exc), plugin=plugin)
+    cache_key = (image_identity(image), plugin, chosen, fmt, tuple(extra_args), profile, vol2, vol3)
     if use_cache:
         with _cache_lock:
             hit = _cache.get(cache_key)
@@ -214,7 +251,7 @@ def run_plugin(image_path: str | Path,
     def _build_cmd_for(version: str) -> list[str]:
         if version == "v3":
             return _build_v3_cmd(vol3, image, meta["vol3"], fmt, extra_args)
-        prof = profile or _profile_cache.get(image)
+        prof = profile or _profile_cache.get(image_identity(image))
         if not prof and plugin != "imageinfo":
             prof = _detect_v2_profile(vol2, image, timeout)
         return _build_v2_cmd(vol2, image, meta["vol2"], prof, fmt, extra_args)
@@ -223,10 +260,7 @@ def run_plugin(image_path: str | Path,
     log.info("running: %s", " ".join(cmd))
     t0 = time.monotonic()
     try:
-        proc = subprocess.run(
-            cmd, capture_output=True, text=True, timeout=timeout,
-            errors="replace", env=_vol_env(),
-        )
+        proc = run_command(cmd, timeout=timeout, env=_vol_env())
         elapsed = time.monotonic() - t0
         ok = (proc.returncode == 0) and bool(proc.stdout.strip())
 
@@ -247,10 +281,7 @@ def run_plugin(image_path: str | Path,
             cmd = _build_cmd_for("v2")
             log.info("running (v2 fallback): %s", " ".join(cmd))
             t1 = time.monotonic()
-            proc = subprocess.run(
-                cmd, capture_output=True, text=True, timeout=timeout,
-                errors="replace", env=_vol_env(),
-            )
+            proc = run_command(cmd, timeout=timeout, env=_vol_env())
             elapsed = time.monotonic() - t1
             ok = (proc.returncode == 0) and bool(proc.stdout.strip())
             fallback_used = True
@@ -309,12 +340,14 @@ def run_plugin(image_path: str | Path,
                 if "Suggested Profile(s)" in line:
                     prof_str = line.split(":", 1)[-1].strip().split(",")[0].strip()
                     if prof_str:
-                        _profile_cache[image] = prof_str
+                        _profile_cache[image_identity(image)] = prof_str
                         log.info("cached profile %s for %s", prof_str, image)
                     break
 
-        if use_cache and ok:
+        if use_cache and ok and len(output) <= 4 * 1024**2:
             with _cache_lock:
+                if len(_cache) >= 16:
+                    _cache.pop(next(iter(_cache)))
                 _cache[cache_key] = result
         return result
 
@@ -376,54 +409,30 @@ def stream_plugin(image_path: str | Path,
         cmd = _build_v3_cmd(vol3, image, meta["vol3"], fmt)
     else:
         cmd = _build_v2_cmd(vol2, image, meta["vol2"],
-                            _profile_cache.get(image), fmt)
+                            _profile_cache.get(image_identity(image)), fmt)
 
     yield {"type": "start", "command": " ".join(cmd),
            "plugin": plugin, "version": chosen}
 
-    try:
-        proc = subprocess.Popen(
-            cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-            text=True, errors="replace", bufsize=1, env=_vol_env(),
-        )
-    except FileNotFoundError as e:
-        yield {"type": "error", "message": f"binary not found: {e}"}
-        return
-
+    from .processes import stream_command
     t0 = time.monotonic()
-    q: "_q.Queue" = _q.Queue()
-
-    def pump(stream, name):
-        for line in iter(stream.readline, ""):
-            q.put((name, line.rstrip("\n")))
-        stream.close()
-
-    threading.Thread(target=pump, args=(proc.stdout, "stdout"), daemon=True).start()
-    threading.Thread(target=pump, args=(proc.stderr, "stderr"), daemon=True).start()
-
-    deadline = t0 + timeout
-    while True:
-        try:
-            name, line = q.get(timeout=0.5)
-            yield {"type": "line", "stream": name, "line": line}
-        except _q.Empty:
-            if proc.poll() is not None and q.empty():
-                break
-            if time.monotonic() > deadline:
-                proc.kill()
-                yield {"type": "error", "message": f"timed out after {timeout}s"}
-                return
-
-    elapsed = round(time.monotonic() - t0, 2)
-    yield {"type": "done", "exit": proc.returncode, "elapsed": elapsed}
+    try:
+        for name, value in stream_command(cmd, timeout=timeout, env=_vol_env()):
+            if name == "exit":
+                yield {"type": "done", "exit": value,
+                       "elapsed": round(time.monotonic() - t0, 2)}
+            else:
+                yield {"type": "line", "stream": name, "line": value}
+    except (OSError, ValueError, subprocess.TimeoutExpired) as exc:
+        yield {"type": "error", "message": str(exc)}
 
 
 def cached_profile(image_path: str | Path) -> str | None:
-    return _profile_cache.get(str(Path(image_path).resolve()))
+    return _profile_cache.get(image_identity(image_path))
 
 
 def set_profile(image_path: str | Path, profile: str) -> None:
-    _profile_cache[str(Path(image_path).resolve())] = profile
+    _profile_cache[image_identity(image_path)] = profile
 
 
 def ensure_profile(image_path: str | Path,
@@ -436,7 +445,7 @@ def ensure_profile(image_path: str | Path,
     instead of falling back to WinXPSP2x86.
     """
     image = str(Path(image_path).resolve())
-    cached = _profile_cache.get(image)
+    cached = _profile_cache.get(image_identity(image))
     if cached:
         return cached
     vol2 = vol2_path or detect_volatility().get("vol2")

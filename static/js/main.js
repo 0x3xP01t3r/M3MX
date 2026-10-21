@@ -72,8 +72,8 @@ async function boot() {
 
   try {
     const [health, settings] = await Promise.all([
-      fetch("/api/health").then(r => r.json()),
-      fetch("/api/settings").then(r => r.json()).catch(() => null),
+      m3mxFetch("/api/health").then(r => r.json()),
+      m3mxFetch("/api/settings").then(r => r.json()).catch(() => null),
     ]);
     window.m3mx.health   = health;
     window.m3mx.settings = settings;
@@ -230,7 +230,7 @@ async function onFilePicked(e) {
   fd.append("image", file);
 
   try {
-    const r = await fetch("/api/upload", { method: "POST", body: fd });
+    const r = await m3mxFetch("/api/upload", { method: "POST", body: fd });
     if (!r.ok) throw new Error(`HTTP ${r.status}`);
     const data = await r.json();
     state.loadedImage = data.path || file.name;
@@ -250,7 +250,7 @@ async function onFilePicked(e) {
 function setOutputDir(path) {
   state.outputDir = path;
   $("#output-dir-path").textContent = path;
-  fetch("/api/settings", {
+  m3mxFetch("/api/settings", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ output: { directory: path } }),
@@ -326,7 +326,7 @@ function onProviderChange() {
 
 async function loadOllamaModels() {
   try {
-    const r = await fetch("/api/ollama/models");
+    const r = await m3mxFetch("/api/ollama/models");
     if (!r.ok) return [];
     const d = await r.json();
     return d.models || [];
@@ -341,7 +341,7 @@ async function quickTriage() {
   toast("Running 10 essential plugins in parallel…", "info");
 
   try {
-    const r = await fetch("/api/triage", {
+    const r = await m3mxFetch("/api/triage", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
     });
@@ -431,7 +431,7 @@ async function testConnection() {
   try {
     const body = { provider, model };
     if (apiKey && !apiKey.includes("…")) body.api_key = apiKey;
-    const r = await fetch("/api/agent/test", {
+    const r = await m3mxFetch("/api/agent/test", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
@@ -491,7 +491,7 @@ async function saveSettings() {
   status.textContent = "Saving…";
 
   try {
-    const r = await fetch("/api/settings", {
+    const r = await m3mxFetch("/api/settings", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),

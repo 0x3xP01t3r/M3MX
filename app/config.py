@@ -1,9 +1,8 @@
 """
 m3mx tool — configuration manager.
 
-Persists settings to config.json in the project root. Settings cover AI
-providers, Volatility paths, and output preferences. API keys are stored
-locally (never hardcoded) and masked when returned to the UI.
+Persists public settings and mode-0600 secrets separately in the private
+state directory. Environment credentials take priority over stored keys.
 """
 from __future__ import annotations
 
@@ -14,9 +13,11 @@ from pathlib import Path
 from typing import Any
 
 ROOT = Path(__file__).resolve().parent.parent
-CONFIG_PATH = ROOT / "config.json"
-OUTPUTS_DIR = ROOT / "outputs"
-UPLOADS_DIR = ROOT / "uploads"
+STATE_DIR = Path(os.environ.get("M3MX_STATE_DIR", str(ROOT / ".m3mx"))).expanduser().resolve()
+CONFIG_PATH = STATE_DIR / "config.json"
+SECRETS_PATH = STATE_DIR / "secrets.json"
+OUTPUTS_DIR = Path(os.environ.get("M3MX_OUTPUTS_DIR", str(ROOT / "outputs"))).resolve()
+UPLOADS_DIR = Path(os.environ.get("M3MX_UPLOADS_DIR", str(ROOT / "uploads"))).resolve()
 
 _lock = threading.RLock()
 
@@ -35,12 +36,12 @@ DEFAULT_CONFIG: dict[str, Any] = {
         },
         "glm_base_url": "https://open.bigmodel.cn/api/paas/v4/",
         "agentrouter_base_url": "https://agentrouter.org/v1",
-        "ollama_url": "http://localhost:11434",
+        "ollama_url": os.environ.get("M3MX_OLLAMA_URL", "http://localhost:11434"),
         "max_tokens": 1000,
         "temperature": 0.2,
-        # Let the agent run shell tools (strings, yara, sleuthkit, …).
-        # A denylist in agent.py still rejects clearly destructive ops.
-        "allow_shell_commands": True,
+        # Only validated, read-only commands with explicit one-use approval.
+        "allow_shell_commands": False,
+        "allow_network_tools": False,
         "shell_command_timeout": 300,   # hard cap per invocation (seconds)
         "shell_workdir": "",             # blank → uploads/ directory
     },
@@ -75,25 +76,72 @@ def _deep_merge(base: dict, override: dict) -> dict:
 
 
 def load_config() -> dict:
-    """Load config.json, filling in defaults for any missing keys."""
+    """Read public settings. Legacy shell access is disabled until re-enabled."""
     with _lock:
-        if not CONFIG_PATH.exists():
-            CONFIG_PATH.write_text(json.dumps(DEFAULT_CONFIG, indent=2))
-            return json.loads(json.dumps(DEFAULT_CONFIG))
+        path = CONFIG_PATH if CONFIG_PATH.exists() else ROOT / "config.json"
         try:
-            data = json.loads(CONFIG_PATH.read_text() or "{}")
-        except json.JSONDecodeError:
+            data = json.loads(path.read_text() or "{}") if path.exists() else {}
+        except (json.JSONDecodeError, OSError):
             data = {}
-        return _deep_merge(DEFAULT_CONFIG, data)
+        if not isinstance(data, dict):
+            data = {}
+        cfg = _deep_merge(json.loads(json.dumps(DEFAULT_CONFIG)), data)
+        if data.get("security_policy_version") != 1:
+            cfg["ai"]["allow_shell_commands"] = False
+        cfg["ai"]["api_keys"] = {k: "" for k in DEFAULT_CONFIG["ai"]["api_keys"]}
+        if os.environ.get("M3MX_OLLAMA_URL"):
+            cfg["ai"]["ollama_url"] = os.environ["M3MX_OLLAMA_URL"]
+        return cfg
 
 
 def save_config(new_config: dict) -> dict:
-    """Merge new_config into the existing file and persist."""
+    """Persist public settings separately from mode-0600 secrets."""
+    from .storage import write_json
     with _lock:
         current = load_config()
         merged = _deep_merge(current, new_config)
-        CONFIG_PATH.write_text(json.dumps(merged, indent=2))
+        keys = dict(_stored_keys())
+        for name, value in new_config.get("ai", {}).get("api_keys", {}).items():
+            if value and "…" not in value and "*" not in value:
+                keys[name] = value
+        if keys:
+            write_json(SECRETS_PATH, keys)
+        merged["ai"]["api_keys"] = {k: "" for k in DEFAULT_CONFIG["ai"]["api_keys"]}
+        merged["security_policy_version"] = 1
+        write_json(CONFIG_PATH, merged)
         return merged
+
+
+def _stored_keys() -> dict:
+    try:
+        if SECRETS_PATH.exists():
+            return json.loads(SECRETS_PATH.read_text())
+        legacy = ROOT / "config.json"
+        if legacy.exists():
+            return json.loads(legacy.read_text()).get("ai", {}).get("api_keys", {})
+    except (OSError, ValueError, AttributeError):
+        pass
+    return {}
+
+
+def migrate_config() -> None:
+    """Move legacy settings/keys out of the source tree without deleting data."""
+    from .storage import write_json
+    with _lock:
+        if not CONFIG_PATH.exists():
+            save_config({})
+        legacy = ROOT / "config.json"
+        if legacy.exists():
+            data = json.loads(legacy.read_text())
+            old = data.get("ai", {}).get("api_keys", {})
+            if any(old.values()):
+                keys = dict(_stored_keys())
+                for k, v in old.items():
+                    if v:
+                        keys.setdefault(k, v)
+                write_json(SECRETS_PATH, keys)
+                data["ai"]["api_keys"] = {k: "" for k in old}
+                write_json(legacy, data)
 
 
 def masked_config() -> dict:
@@ -101,17 +149,16 @@ def masked_config() -> dict:
     cfg = load_config()
     keys = cfg.get("ai", {}).get("api_keys", {})
     cfg["ai"]["api_keys"] = {
-        name: (f"{v[:4]}…{v[-4:]}" if v and len(v) > 8 else ("***" if v else ""))
-        for name, v in keys.items()
+        name: ("***" if get_api_key(name) else "") for name in keys
     }
     return cfg
 
 
 def get_api_key(provider: str) -> str:
-    cfg = load_config()
-    return cfg.get("ai", {}).get("api_keys", {}).get(provider, "") or os.environ.get(
-        f"{provider.upper()}_API_KEY", ""
-    )
+    aliases = {"abuseipdb": "ABUSEIPDB_KEY", "virustotal": "VT_API_KEY"}
+    return (os.environ.get(f"{provider.upper()}_API_KEY", "") or
+            os.environ.get(aliases.get(provider, "M3MX_UNUSED_KEY"), "") or
+            _stored_keys().get(provider, ""))
 
 
 # ---------------------------------------------------------------------------
@@ -189,13 +236,17 @@ def safe_output_dir(cfg: dict | None = None) -> str:
     cached = _safe_dir_cache.get(requested)
     if cached:
         return cached
-    p = Path(requested)
+    from .security import checked_path, PolicyError
+    try:
+        p = checked_path(requested, ("output",), must_exist=False)
+    except PolicyError:
+        p = OUTPUTS_DIR
     try:
         p.mkdir(parents=True, exist_ok=True)
         # Probe writability with a short-lived sentinel.
-        probe = p / ".m3mx_write_probe"
-        probe.write_bytes(b"")
-        probe.unlink(missing_ok=True)
+        import tempfile
+        with tempfile.TemporaryFile(dir=p):
+            pass
         _safe_dir_cache[requested] = str(p)
         return str(p)
     except (PermissionError, FileNotFoundError, OSError):
@@ -216,5 +267,5 @@ def reset_safe_output_cache() -> None:
 
 
 # Ensure output directories exist on import
-OUTPUTS_DIR.mkdir(exist_ok=True)
-UPLOADS_DIR.mkdir(exist_ok=True)
+OUTPUTS_DIR.mkdir(exist_ok=True, parents=True)
+UPLOADS_DIR.mkdir(exist_ok=True, parents=True)

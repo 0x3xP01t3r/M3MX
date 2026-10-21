@@ -8,7 +8,7 @@ Usage:
     python start.py
 
 It will:
-  1. Verify Python >= 3.9
+  1. Verify Python >= 3.11
   2. Install missing Python dependencies
   3. Detect Volatility 2 and/or Volatility 3
   4. Start the Flask web server
@@ -28,8 +28,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).parent.resolve()
 REQUIREMENTS = ROOT / "requirements.txt"
-HOST = "0.0.0.0"
-PORT = 5000
+HOST = "127.0.0.1"
+PORT = int(os.environ.get("M3MX_PORT", "5000"))
 
 # ---------------------------------------------------------------------------
 # Pretty terminal output
@@ -94,8 +94,8 @@ def banner() -> None:
 # ---------------------------------------------------------------------------
 
 def check_python() -> None:
-    if sys.version_info < (3, 9):
-        err(f"Python 3.9+ required, but running {sys.version.split()[0]}.")
+    if sys.version_info < (3, 11):
+        err(f"Python 3.11+ required, but running {sys.version.split()[0]}.")
         sys.exit(1)
     ok(f"Python {sys.version.split()[0]} detected.")
 
@@ -120,7 +120,7 @@ def _import_available(module: str) -> bool:
 def check_requirements() -> None:
     # Lightweight check: only install if Flask is missing. A full pip install -r
     # is slow every launch; we trust the user after first run.
-    if _import_available("flask") and _import_available("requests") and _import_available("yaml"):
+    if all(_import_available(m) for m in ("flask", "requests", "yaml", "markdown", "nh3", "volatility3", "gunicorn")):
         ok("Python dependencies already installed.")
         return
 
@@ -195,20 +195,15 @@ def detect_volatility() -> dict:
         1. config.json → volatility.vol2_path / vol3_path  (analyst's pick)
         2. PATH lookup of well-known binary names         (best-effort)
     """
-    import json
     result = {"vol2": None, "vol3": None}
 
     # 1. Honour explicit config first.
-    cfg_path = ROOT / "config.json"
-    if cfg_path.exists():
-        try:
-            v = (json.loads(cfg_path.read_text()) or {}).get("volatility", {}) or {}
-            for key, cfg_key in (("vol2", "vol2_path"), ("vol3", "vol3_path")):
-                p = (v.get(cfg_key) or "").strip()
-                if p and Path(p).exists():
-                    result[key] = p
-        except Exception as e:
-            warn(f"Could not read config.json volatility paths: {e}")
+    from app.config import load_config
+    v = load_config().get("volatility", {})
+    for key, cfg_key in (("vol2", "vol2_path"), ("vol3", "vol3_path")):
+        p = (os.environ.get(f"{key.upper()}_PATH") or v.get(cfg_key) or "").strip()
+        if p and Path(p).is_file():
+            result[key] = p
 
     # 2. Fall back to PATH detection only for whichever slot is still empty.
     if not result["vol3"]:
@@ -223,6 +218,8 @@ def detect_volatility() -> dict:
             if path:
                 result["vol2"] = path
                 break
+        if not result["vol2"] and shutil.which("python2") and (ROOT / "bin" / "vol2").is_file():
+            result["vol2"] = str(ROOT / "bin" / "vol2")
 
     if result["vol3"]:
         ok(f"Volatility 3: {result['vol3']}")
@@ -273,10 +270,6 @@ def open_browser(url: str, delay: float = 1.2) -> None:
 
 
 def run_server(host: str, port: int, vol_paths: dict) -> None:
-    # Import after dependency install
-    from app.main import create_app
-
-    app = create_app(volatility_paths=vol_paths)
     url = f"http://{host}:{port}"
 
     print()
@@ -286,8 +279,14 @@ def run_server(host: str, port: int, vol_paths: dict) -> None:
     print()
 
     open_browser(url)
-    # Disable the default reloader — it runs the launcher twice.
-    app.run(host=host, port=port, debug=False, use_reloader=False, threaded=True)
+    env = os.environ.copy()
+    for key, value in vol_paths.items():
+        if value:
+            env[f"{key.upper()}_PATH"] = value
+    subprocess.run([sys.executable, "-m", "gunicorn", "--bind", f"{host}:{port}",
+                    "--workers", "1", "--worker-class", "gthread", "--threads", "8",
+                    "--timeout", "120", "--graceful-timeout", "30", "app.wsgi:application"],
+                   cwd=str(ROOT), env=env, check=True)
 
 
 def main() -> None:

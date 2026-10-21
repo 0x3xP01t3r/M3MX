@@ -13,21 +13,22 @@
     },
     "glm_base_url": "https://open.bigmodel.cn/api/paas/v4/",
     "agentrouter_base_url": "https://agentrouter.org/v1",
-    "ollama_url": "http://host.docker.internal:11434",
+    "ollama_url": "http://localhost:11434",
     "max_tokens": 2000,
     "temperature": 0.2,
-    "allow_shell_commands": true,
+    "allow_shell_commands": false,
+    "allow_network_tools": false,
     "shell_command_timeout": 300,
     "shell_workdir": ""
   },
   "volatility": {
-    "vol2_path": "/app/bin/vol2",
-    "vol3_path": "/app/bin/vol",
+    "vol2_path": "",
+    "vol3_path": "",
     "preference": "auto",
     "timeout_seconds": 600
   },
   "output": {
-    "directory": "/app/outputs",
+    "directory": "",
     "auto_save": true,
     "formats": [
       "txt",

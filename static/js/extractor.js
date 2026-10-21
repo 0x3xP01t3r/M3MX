@@ -53,7 +53,7 @@
     window.m3mx.setStatus("running", "filescan");
 
     try {
-      const r = await fetch("/api/files/scan", { method: "POST" });
+      const r = await m3mxFetch("/api/files/scan", { method: "POST" });
       const d = await r.json();
       if (d.error) throw new Error(d.error);
 
@@ -188,7 +188,7 @@
     window.m3mx.toast(`Extracting ${offsets.length} files…`, "info");
 
     try {
-      const r = await fetch("/api/files/extract", {
+      const r = await m3mxFetch("/api/files/extract", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ offsets }),
@@ -287,7 +287,7 @@
       "\n" + JSON.stringify(sample);
 
     try {
-      const r = await fetch("/api/agent/chat", {
+      const r = await m3mxFetch("/api/agent/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ message: prompt }),
